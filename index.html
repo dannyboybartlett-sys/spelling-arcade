@@ -1269,7 +1269,7 @@ function renderGame1(word) {
 
   const content = `
     <div class="game-area fade-in">
-      <div class="jumble-original" id="jumbleHint">Arrange the letters:</div>
+      <div class="jumble-original" id="jumbleHint">📖 ${escHtml(word.zh)} — Arrange the letters:</div>
 
       <div class="answer-slots" id="answerSlots">
         ${jumbleUserAnswer.map((l, i) => `
