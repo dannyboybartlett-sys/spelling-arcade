@@ -1638,29 +1638,39 @@ function revealFillAnswer() {
 function loadGame3() {
   state.matchCorrect = 0;
   state.matchSelected = null;
-  state.matchPairs = state.words.map(w => ({ en: w.en, zh: w.zh, matched: false }));
-  state.matchEnOrder = shuffle([...state.matchPairs]);
-  state.matchZhOrder = shuffle([...state.matchPairs]);
-  state.matchEnOrder.forEach((p, i) => p._enIdx = i);
-  state.matchZhOrder.forEach((p, i) => p._zhIdx = i);
+  // Build a flat list of pairs, each with a unique id
+  state.matchPairs = state.words.map((w, i) => ({
+    en: w.en,
+    zh: w.zh,
+    matched: false,
+    id: i
+  }));
+  // Shuffle for display — both columns independently
+  state.matchEnList = shuffle([...state.matchPairs]);
+  state.matchZhList = shuffle([...state.matchPairs]);
 
   renderMatch3();
   updateMatchProgress();
 }
 
 function renderMatch3() {
-  const enHtml = state.matchEnOrder.map((p, i) => `
-    <div class="match-card ${p.matched ? 'matched' : ''}" id="mEn_${p._enIdx}"
-         onclick="matchSelect('en', ${p._enIdx})">${escHtml(p.en)}</div>
+  const enHtml = state.matchEnList.map(p => `
+    <div class="match-card ${p.matched ? 'matched' : ''}"
+         data-id="${p.id}" data-side="en"
+         onclick="matchCardClick(this, ${p.id}, 'en')">${escHtml(p.en)}</div>
   `).join('');
 
-  const zhHtml = state.matchZhOrder.map((p, i) => `
-    <div class="match-card ${p.matched ? 'matched' : ''}" id="mZh_${p._zhIdx}"
-         onclick="matchSelect('zh', ${p._zhIdx})">${escHtml(p.zh)}</div>
+  const zhHtml = state.matchZhList.map(p => `
+    <div class="match-card ${p.matched ? 'matched' : ''}"
+         data-id="${p.id}" data-side="zh"
+         onclick="matchCardClick(this, ${p.id}, 'zh')">${escHtml(p.zh)}</div>
   `).join('');
 
   const content = `
     <div class="game-area fade-in">
+      <div style="text-align:center;font-size:14px;color:var(--muted);font-weight:700;margin-bottom:16px;">
+        Tap an English word, then tap its Chinese meaning!
+      </div>
       <div class="match-grid">
         <div class="match-col">
           <div class="match-col-label">🇬🇧 English</div>
@@ -1671,73 +1681,70 @@ function renderMatch3() {
           ${zhHtml}
         </div>
       </div>
-
-      <div class="feedback-msg" id="feedbackMsg" style="min-height:44px"></div>
+      <div class="feedback-msg" id="feedbackMsg" style="min-height:44px;margin-top:16px"></div>
     </div>
   `;
   document.getElementById('gameContent').innerHTML = content;
-  updateProgress(); // show overall word progress too
+  updateMatchProgress();
 }
 
-function matchSelect(side, idx) {
-  const key = side === 'en' ? 'en' : 'zh';
-  const pair = state.matchPairs.find(p => p[key] === state[`match${side === 'en' ? 'En' : 'Zh'}Order`].find(o => o[`_${key}Idx`] === idx)[key]);
-
+function matchCardClick(el, id, side) {
+  const pair = state.matchPairs[id];
   if (!pair || pair.matched) return;
+  if (el.classList.contains('disabled')) return;
 
-  // Clear previous selection visual
-  document.querySelectorAll('.match-card.selected').forEach(e => e.classList.remove('selected'));
-
-  if (state.matchSelected && state.matchSelected.side !== side) {
-    // Second selection — check match
-    const firstPair = state.matchSelected.pair;
-
-    if (firstPair === pair) {
-      // Same pair — already matched, do nothing
+  if (!state.matchSelected) {
+    // First click — select it
+    state.matchSelected = { side, id, el };
+    el.classList.add('selected');
+  } else {
+    const first = state.matchSelected;
+    // Same card clicked — deselect
+    if (first.id === id && first.side === side) {
+      first.el.classList.remove('selected');
       state.matchSelected = null;
       return;
     }
 
-    if (firstPair.en === pair.en) {
-      // Same word, different side — match!
-      firstPair.matched = true;
+    if (first.side === side) {
+      // Same side — switch selection
+      first.el.classList.remove('selected');
+      state.matchSelected = { side, id, el };
+      el.classList.add('selected');
+      return;
+    }
+
+    // Different sides — check match!
+    if (first.id === id) {
+      // CORRECT! Same pair ID on both sides
       pair.matched = true;
       state.matchCorrect++;
 
-      const el1 = document.getElementById('mEn_' + firstPair._enIdx);
-      const el2 = document.getElementById('mZh_' + firstPair._zhIdx);
-      if (el1) { el1.classList.remove('selected'); el1.classList.add('correct-match'); }
-      if (el2) { el2.classList.remove('selected'); el2.classList.add('correct-match'); }
+      first.el.classList.remove('selected');
+      first.el.classList.add('correct-match');
+      first.el.classList.add('disabled');
+      el.classList.add('correct-match');
+      el.classList.add('disabled');
 
       state.totalCorrect++;
       updateScore(100);
       updateMatchProgress();
-      showFeedback('success', '🎉 +100 pts');
+      showFeedback('success', '🎉 Correct! +100 pts');
       celebrateAnimal();
-
       state.matchSelected = null;
 
-      // Check if all matched
       if (state.matchPairs.every(p => p.matched)) {
         setTimeout(() => showResults(), 2000);
       }
     } else {
-      // Wrong pair
-      const el1 = document.getElementById('mEn_' + state.matchSelected.enIdx);
-      const el2 = document.getElementById('mZh_' + idx);
-      if (el1) { el1.classList.remove('selected'); el1.classList.add('wrong-match'); }
-      if (el2) { el2.classList.add('wrong-match'); }
-      setTimeout(() => {
-        document.querySelectorAll('.match-card.wrong-match').forEach(e => e.classList.remove('wrong-match'));
-      }, 600);
-      showFeedback('error', '❌ Try again!');
+      // WRONG!
+      el.classList.add('wrong-match');
+      setTimeout(() => el.classList.remove('wrong-match'), 700);
+      showFeedback('error', '❌ Not quite! Try again.');
       state.matchSelected = null;
+      // Deselect the first
+      first.el.classList.remove('selected');
     }
-  } else {
-    // First selection
-    state.matchSelected = { side, pair, enIdx: pair._enIdx, zhIdx: pair._zhIdx };
-    const el = document.getElementById('m' + (side === 'en' ? 'En_' + pair._enIdx : 'Zh_' + pair._zhIdx));
-    if (el) el.classList.add('selected');
   }
 }
 
