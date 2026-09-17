@@ -552,7 +552,7 @@
       font-size: 52px;
       color: var(--primary);
       letter-spacing: 3px;
-      text-transform: uppercase;
+      text-transform: lowercase;
     }
 
     .memory-word-chinese {
@@ -615,7 +615,6 @@
       border-radius: var(--radius-sm);
       font-family: 'Fredoka One', cursive;
       font-size: 22px;
-      text-transform: uppercase;
       letter-spacing: 2px;
       outline: none;
       transition: border-color 0.2s;
@@ -1236,7 +1235,7 @@ function toggleMode() {
 function addWord() {
   const enInput = document.getElementById('inputEnglish');
   const zhInput = document.getElementById('inputChinese');
-  const en = enInput.value.trim();
+  const en = enInput.value.trim().toLowerCase();
   const zh = zhInput.value.trim();
 
   if (!en || !zh) {
@@ -1518,7 +1517,7 @@ function checkJumble() {
       // Reveal correct answer
       setTimeout(() => {
         revealJumbleAnswer();
-        showFeedback('error', `The answer was: <strong>${state.jumbleAnswer.join('')}</strong>`);
+        showFeedback('error', `The answer was: <strong>${state.jumbleAnswer.join('').toLowerCase()}</strong>`);
         setTimeout(() => advanceWord(1), 2200);
       }, 600);
     } else {
@@ -1568,7 +1567,7 @@ const QWERTY = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
 function loadGame2() {
   updateProgress();
   const word = state.words[state.wordIndex];
-  const letters = word.en.toUpperCase().split('');
+  const letters = word.en.toLowerCase().split('');
 
   const missingCount = fillLevel === 1 ? 1 : fillLevel === 2 ? 2 : 4;
   const totalMissing = Math.min(missingCount, letters.length - 1);
@@ -1808,7 +1807,7 @@ function renderMatch3() {
   const enHtml = state.matchEnList.map(p => `
     <div class="match-card ${p.matched ? 'matched' : ''}"
          data-id="${p.id}" data-side="en"
-         onclick="matchCardClick(this, ${p.id}, 'en')">${escHtml(p.en)}</div>
+         onclick="matchCardClick(this, ${p.id}, 'en')">${escHtml(p.en.toLowerCase())}</div>
   `).join('');
 
   const zhHtml = state.matchZhList.map(p => `
@@ -1948,7 +1947,7 @@ function renderMemoryMemorize(word, secondsLeft) {
       <div class="memory-phase-label">📖 Memorize this word!</div>
 
       <div class="memory-word-display" id="memWordDisplay">
-        <span class="memory-word-text">${escHtml(word.en)}</span>
+        <span class="memory-word-text">${escHtml(word.en.toLowerCase())}</span>
         <span class="memory-word-chinese">${escHtml(word.zh)}</span>
       </div>
 
@@ -2395,7 +2394,7 @@ function processUploadRows(rows, filename) {
     }
 
     // Clean the word (remove extra spaces)
-    const cleanEn = en.replace(/\s+/g, ' ');
+    const cleanEn = en.replace(/\s+/g, ' ').toLowerCase();
     const cleanZh = zh.replace(/\s+/g, ' ');
 
     // Skip duplicates
