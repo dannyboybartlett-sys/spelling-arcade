@@ -528,6 +528,107 @@
     .qwerty-key.selected { background: var(--primary); color: white; border-color: var(--primary-dk); border-bottom-color: var(--primary-dk); transform: translateY(-2px); }
     .qwerty-key.used { background: #f0f0f0; color: #bbb; border-color: #ddd; border-bottom-color: #ccc; cursor: default; opacity: 0.5; pointer-events: none; transform: none; }
 
+    /* GAME 4: Memory Spell */
+    .memory-phase-label {
+      font-family: 'Fredoka One', cursive;
+      font-size: 20px;
+      color: var(--secondary);
+      margin-bottom: 24px;
+    }
+
+    .memory-word-display {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      padding: 28px 40px;
+      background: linear-gradient(135deg, #fff5e6, #fff0f8);
+      border-radius: 20px;
+      border: 3px solid var(--accent);
+      margin-bottom: 24px;
+      animation: fadeInUp 0.3s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .memory-word-text {
+      font-family: 'Fredoka One', cursive;
+      font-size: 52px;
+      color: var(--primary);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    .memory-word-chinese {
+      font-size: 22px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .memory-timer-ring {
+      display: flex; justify-content: center; margin-bottom: 20px;
+    }
+
+    .memory-countdown-circle {
+      width: 90px; height: 90px;
+      border-radius: 50%;
+      background: var(--secondary);
+      color: white;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-family: 'Fredoka One', cursive;
+      font-size: 36px;
+      box-shadow: 0 4px 16px rgba(0,180,216,0.35);
+      animation: float 2s ease-in-out infinite;
+    }
+
+    .memory-countdown-circle small {
+      font-size: 11px;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .memory-timer-bar-wrap {
+      display: flex; align-items: center; gap: 8px;
+      background: #f0f0f0;
+      border-radius: 50px;
+      padding: 8px 20px;
+      margin-bottom: 20px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .memory-countdown-big {
+      font-family: 'Fredoka One', cursive;
+      font-size: 28px;
+      color: var(--secondary);
+      transition: color 0.3s;
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .memory-input-wrap {
+      display: flex; gap: 10px; width: 100%; max-width: 460px;
+    }
+
+    .memory-input {
+      flex: 1;
+      padding: 14px 18px;
+      border: 3px solid #e0e0e0;
+      border-radius: var(--radius-sm);
+      font-family: 'Fredoka One', cursive;
+      font-size: 22px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .memory-input:focus { border-color: var(--primary); }
+
+    .memory-submit-btn {
+      white-space: nowrap;
+      font-size: 16px;
+      padding: 14px 24px;
+    }
+
     /* GAME 3: Match */
     .match-grid {
       display: grid;
@@ -1035,6 +1136,9 @@
       </button>
       <button class="game-tab" id="tab3" onclick="switchTab(3)">
         <span class="tab-icon">🔗</span>Word Match
+      </button>
+      <button class="game-tab" id="tab4" onclick="switchTab(4)">
+        <span class="tab-icon">🧠</span>Memory Spell
       </button>
     </div>
 
@@ -1804,6 +1908,168 @@ function updateMatchProgress() {
 }
 
 /* ═══════════════════════════════════════════════════════
+   GAME 4: MEMORY SPELL
+═══════════════════════════════════════════════════════ */
+const MEMORY_SHOW_SECS = 5;
+const MEMORY_TYPE_SECS = 60;
+
+function loadGame4() {
+  updateProgress();
+  state.memoryAttempts = 0;
+  state.memoryTimer = null;
+  state.memoryCountdown = null;
+  state.memoryPhase = 'memorize'; // 'memorize' | 'type'
+  state.memoryInput = '';
+  state.memoryWord = state.words[state.wordIndex];
+  startMemorizePhase();
+}
+
+function startMemorizePhase() {
+  state.memoryPhase = 'memorize';
+  const word = state.memoryWord;
+  let secondsLeft = MEMORY_SHOW_SECS;
+
+  renderMemoryMemorize(word, secondsLeft);
+
+  state.memoryTimer = setInterval(() => {
+    secondsLeft--;
+    const countdownEl = document.getElementById('memCountdown');
+    if (countdownEl) countdownEl.textContent = secondsLeft;
+    if (secondsLeft <= 0) {
+      clearInterval(state.memoryTimer);
+      startTypePhase();
+    }
+  }, 1000);
+}
+
+function renderMemoryMemorize(word, secondsLeft) {
+  const content = `
+    <div class="game-area fade-in" style="text-align:center;">
+      <div class="memory-phase-label">📖 Memorize this word!</div>
+
+      <div class="memory-word-display" id="memWordDisplay">
+        <span class="memory-word-text">${escHtml(word.en)}</span>
+        <span class="memory-word-chinese">${escHtml(word.zh)}</span>
+      </div>
+
+      <div class="memory-timer-ring">
+        <div class="memory-countdown-circle">
+          <span id="memCountdown">${secondsLeft}</span>
+          <small>seconds</small>
+        </div>
+      </div>
+
+      <div class="feedback-msg" id="feedbackMsg" style="min-height:44px"></div>
+    </div>
+  `;
+  document.getElementById('gameContent').innerHTML = content;
+}
+
+function startTypePhase() {
+  state.memoryPhase = 'type';
+  state.memoryCountdown = MEMORY_TYPE_SECS;
+  let secs = MEMORY_TYPE_SECS;
+
+  renderMemoryType(secs);
+
+  state.memoryTimer = setInterval(() => {
+    secs--;
+    state.memoryCountdown = secs;
+    const el = document.getElementById('memTypeCountdown');
+    if (el) {
+      el.textContent = secs;
+      // Change colour when time is low
+      el.style.color = secs <= 10 ? 'var(--danger)' : secs <= 20 ? 'var(--primary)' : 'var(--secondary)';
+    }
+    if (secs <= 0) {
+      clearInterval(state.memoryTimer);
+      // Time's up — check whatever they typed
+      checkMemoryAnswer(true);
+    }
+  }, 1000);
+}
+
+function renderMemoryType(secondsLeft) {
+  const word = state.memoryWord;
+  const content = `
+    <div class="game-area fade-in">
+      <div class="memory-phase-label">✏️ Type the word from memory!</div>
+
+      <div class="memory-timer-bar-wrap">
+        <span class="memory-timer-label">⏱️ Time left:</span>
+        <span class="memory-countdown-big" id="memTypeCountdown">${secondsLeft}</span>
+        <span class="memory-timer-label">sec</span>
+      </div>
+
+      <div class="memory-input-wrap">
+        <input type="text" class="memory-input" id="memInput" autocomplete="off"
+               autocorrect="off" autocapitalize="none" spellcheck="false"
+               placeholder="Type the word here..."
+               onkeydown="if(event.key==='Enter')checkMemoryAnswer()" />
+        <button class="btn btn-primary memory-submit-btn" onclick="checkMemoryAnswer()">✓ Submit</button>
+      </div>
+
+      <div class="feedback-msg" id="feedbackMsg" style="min-height:44px;margin-top:16px"></div>
+    </div>
+  `;
+  document.getElementById('gameContent').innerHTML = content;
+  // Auto-focus the input
+  setTimeout(() => {
+    const inp = document.getElementById('memInput');
+    if (inp) inp.focus();
+  }, 100);
+}
+
+function checkMemoryAnswer(timedOut = false) {
+  clearInterval(state.memoryTimer);
+
+  const userAnswer = (document.getElementById('memInput')?.value || '').trim().toLowerCase();
+  const correctAnswer = state.memoryWord.en.toLowerCase();
+
+  if (userAnswer === correctAnswer) {
+    state.totalCorrect++;
+    updateScore(100);
+    showFeedback('success', `🎉 Correct! +100 pts`);
+    celebrateAnimal();
+    setTimeout(() => advanceWord(4), 1800);
+  } else {
+    state.memoryAttempts++;
+    if (state.memoryAttempts >= 3) {
+      // Reveal and advance
+      showFeedback('error', `The answer was: <strong>${escHtml(state.memoryWord.en)}</strong>`);
+      setTimeout(() => advanceWord(4), 2200);
+    } else {
+      if (timedOut) {
+        showFeedback('error', `⏰ Time's up! The answer was: <strong>${escHtml(state.memoryWord.en)}</strong>`);
+        setTimeout(() => advanceWord(4), 2200);
+      } else {
+        showFeedback('error', `❌ Not quite! Try again — <strong>${state.memoryAttempts}/3</strong> attempts used.`);
+        state.memoryAttempts = Math.max(state.memoryAttempts, 1);
+        // Let them try again with remaining time
+        let secs = state.memoryCountdown;
+        const inp = document.getElementById('memInput');
+        if (inp) { inp.value = ''; inp.focus(); }
+
+        state.memoryTimer = setInterval(() => {
+          secs--;
+          state.memoryCountdown = secs;
+          const el = document.getElementById('memTypeCountdown');
+          if (el) {
+            el.textContent = secs;
+            el.style.color = secs <= 10 ? 'var(--danger)' : secs <= 20 ? 'var(--primary)' : 'var(--secondary)';
+          }
+          if (secs <= 0) {
+            clearInterval(state.memoryTimer);
+            showFeedback('error', `⏰ Time's up! The answer was: <strong>${escHtml(state.memoryWord.en)}</strong>`);
+            setTimeout(() => advanceWord(4), 2200);
+          }
+        }, 1000);
+      }
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
    ADVANCE / RESULTS
 ═══════════════════════════════════════════════════════ */
 function advanceWord(gameTab) {
@@ -1832,6 +2098,7 @@ function loadGame(tab, wordIndex) {
       case 1: loadGame1(); break;
       case 2: loadGame2(); break;
       case 3: loadGame3(); break;
+      case 4: loadGame4(); break;
     }
   } catch(err) {
     console.error('Game load error:', err);
