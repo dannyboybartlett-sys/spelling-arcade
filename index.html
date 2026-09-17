@@ -1763,10 +1763,31 @@ function advanceWord(gameTab) {
 
 function loadGame(tab, wordIndex) {
   state.wordIndex = wordIndex !== undefined ? wordIndex : state.wordIndex;
-  switch(tab) {
-    case 1: loadGame1(); break;
-    case 2: loadGame2(); break;
-    case 3: loadGame3(); break;
+  if (!state.words || state.words.length === 0) {
+    document.getElementById('gameContent').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h3>No Words Yet!</h3>
+        <p>Switch to Teacher mode and add at least 3 words first.</p>
+      </div>
+    `;
+    return;
+  }
+  try {
+    switch(tab) {
+      case 1: loadGame1(); break;
+      case 2: loadGame2(); break;
+      case 3: loadGame3(); break;
+    }
+  } catch(err) {
+    console.error('Game load error:', err);
+    document.getElementById('gameContent').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <h3>Something went wrong</h3>
+        <p>Please refresh the page and try again.</p>
+      </div>
+    `;
   }
 }
 
