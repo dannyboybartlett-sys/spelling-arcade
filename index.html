@@ -1,0 +1,2213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spelling Arcade</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:    #FF6B35;
+      --primary-dk: #e55a2b;
+      --secondary:  #00B4D8;
+      --accent:     #FFD166;
+      --success:    #06D6A0;
+      --danger:     #EF476F;
+      --bg:         #FFF9F0;
+      --surface:    #FFFFFF;
+      --text:       #2D3436;
+      --muted:      #636E72;
+      --shadow:     0 4px 20px rgba(0,0,0,0.08);
+      --shadow-lg:  0 8px 32px rgba(0,0,0,0.12);
+      --radius:     16px;
+      --radius-sm:  10px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Nunito', 'Comic Sans MS', cursive, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      background-image: radial-gradient(circle, rgba(255,107,53,0.07) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* ─── Typography ───────────────────────────────────────── */
+    h1, h2, h3 { font-family: 'Fredoka One', cursive; }
+
+    /* ─── Layout ───────────────────────────────────────────── */
+    .app-wrapper {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 16px 80px;
+    }
+
+    /* ─── Header ───────────────────────────────────────────── */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 0 16px;
+      border-bottom: 3px dashed rgba(255,107,53,0.2);
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 48px; height: 48px;
+      background: var(--primary);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 4px 12px rgba(255,107,53,0.35);
+    }
+
+    .logo-text {
+      font-family: 'Fredoka One', cursive;
+      font-size: 26px;
+      color: var(--primary);
+      line-height: 1;
+    }
+
+    .logo-text span { color: var(--secondary); }
+
+    .score-badge {
+      background: var(--accent);
+      color: var(--text);
+      font-family: 'Fredoka One', cursive;
+      font-size: 20px;
+      padding: 8px 18px;
+      border-radius: 50px;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s;
+    }
+
+    .score-badge.pulse {
+      animation: scorePulse 0.4s ease;
+    }
+
+    @keyframes scorePulse {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.25); }
+      100% { transform: scale(1); }
+    }
+
+    /* ─── Mode Toggle ──────────────────────────────────────── */
+    .mode-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+
+    .mode-label {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 160px;
+      height: 38px;
+      background: #e9e9e9;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .toggle-switch.teacher {
+      background: var(--secondary);
+    }
+
+    .toggle-knob {
+      position: absolute;
+      top: 4px; left: 4px;
+      width: 72px; height: 30px;
+      background: white;
+      border-radius: 16px;
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800;
+      color: var(--secondary);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    .toggle-switch.teacher .toggle-knob {
+      transform: translateX(80px);
+      color: white;
+    }
+
+    /* ─── Setup Panel ──────────────────────────────────────── */
+    .setup-panel {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      margin-bottom: 20px;
+      border: 2px solid rgba(0,180,216,0.2);
+    }
+
+    .setup-panel h2 {
+      font-size: 22px;
+      color: var(--secondary);
+      margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .setup-form {
+      display: flex; flex-direction: column; gap: 12px;
+    }
+
+    .form-row {
+      display: flex; gap: 10px; flex-wrap: wrap;
+    }
+
+    .form-row input {
+      flex: 1;
+      min-width: 140px;
+      padding: 11px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    .form-row input:focus { border-color: var(--secondary); }
+    .form-row input.english:focus { border-color: var(--primary); }
+
+    .btn {
+      padding: 11px 22px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+
+    .btn:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: var(--secondary); color: white; }
+    .btn-success { background: var(--success); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 2px solid #e0e0e0; }
+    .btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+
+    .word-list {
+      margin-top: 16px;
+      display: flex; flex-direction: column; gap: 8px;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    .word-list-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #f8f8f8;
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      animation: fadeInUp 0.25s ease;
+    }
+
+    .word-list-item .word-en {
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 15px;
+    }
+
+    .word-list-item .word-zh {
+      font-size: 14px;
+      color: var(--muted);
+      margin-left: 8px;
+      flex: 1;
+    }
+
+    .word-list-item .remove-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--danger); font-size: 18px;
+      opacity: 0.6; transition: opacity 0.2s;
+      padding: 4px;
+    }
+
+    .word-list-item .remove-btn:hover { opacity: 1; }
+
+    .setup-actions {
+      display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap;
+    }
+
+    .word-count-hint {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    .word-count-hint strong { color: var(--primary); }
+
+    /* ─── Game Tabs ────────────────────────────────────────── */
+    .game-tabs {
+      display: flex; gap: 8px; margin-bottom: 16px;
+    }
+
+    .game-tab {
+      flex: 1;
+      padding: 10px 8px;
+      border: 2px solid #e0e0e0;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      cursor: pointer;
+      text-align: center;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--muted);
+      transition: all 0.2s;
+      font-family: 'Nunito', sans-serif;
+    }
+
+    .game-tab.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: white;
+    }
+
+    .game-tab:hover:not(.active) {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .game-tab .tab-icon { font-size: 20px; display: block; margin-bottom: 2px; }
+
+    /* ─── Game Card ────────────────────────────────────────── */
+    .game-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px 24px;
+      min-height: 380px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ─── Progress Bar ──────────────────────────────────────── */
+    .progress-section {
+      margin-bottom: 24px;
+    }
+
+    .progress-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: flex; justify-content: space-between;
+    }
+
+    .progress-track {
+      height: 12px;
+      background: #e9e9e9;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--secondary), var(--success));
+      border-radius: 6px;
+      transition: width 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    /* ─── Level Selector (Game 2) ─────────────────────────── */
+    .level-selector {
+      display: flex; gap: 8px; justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .level-btn {
+      padding: 7px 18px;
+      border: 2px solid #e0e0e0;
+      border-radius: 50px;
+      background: white;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--muted);
+      font-family: 'Nunito', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .level-btn.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: white;
+    }
+
+    .level-btn:hover:not(.active) {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* ─── Game Area ────────────────────────────────────────── */
+    .game-area {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 24px;
+    }
+
+    .word-display {
+      font-family: 'Fredoka One', cursive;
+      font-size: 14px;
+      color: var(--muted);
+      background: #f0f0f0;
+      padding: 6px 18px;
+      border-radius: 50px;
+    }
+
+    /* GAME 1: Jumble */
+    .jumble-original {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 700;
+      min-height: 20px;
+    }
+
+    .answer-slots {
+      display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+      min-height: 60px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: var(--radius);
+      border: 2px dashed #d0d0d0;
+      width: 100%;
+      max-width: 460px;
+    }
+
+    .answer-slot {
+      width: 52px; height: 52px;
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Fredoka One', cursive;
+      font-size: 22px;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: white;
+      user-select: none;
+      position: relative;
+    }
+
+    .answer-slot:hover { border-color: var(--secondary); background: #eaf8ff; }
+    .answer-slot.filled { border-style: solid; border-color: var(--secondary); background: #eaf8ff; }
+    .answer-slot.correct { border-color: var(--success); background: #e8fff7; color: var(--success); }
+    .answer-slot.wrong { border-color: var(--danger); background: #fff0f3; color: var(--danger); animation: shake 0.4s ease; }
+    .answer-slot.empty-slot { border-color: transparent; background: transparent; pointer-events: none; font-size: 0; }
+
+    .letter-bank {
+      display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+    }
+
+    .jumble-tile {
+      width: 52px; height: 52px;
+      background: var(--primary);
+      color: white;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Fredoka One', cursive;
+      font-size: 22px;
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+      box-shadow: 0 3px 0 var(--primary-dk);
+      position: relative;
+    }
+
+    .jumble-tile:hover { transform: translateY(-3px); box-shadow: 0 6px 0 var(--primary-dk); }
+    .jumble-tile:active { transform: translateY(1px); box-shadow: 0 1px 0 var(--primary-dk); }
+    .jumble-tile.used { opacity: 0.25; pointer-events: none; transform: scale(0.9); }
+    .jumble-tile.correct { background: var(--success); box-shadow: 0 3px 0 #04b586; }
+    .jumble-tile.wrong { background: var(--danger); box-shadow: 0 3px 0 #c73655; animation: shake 0.4s ease; }
+
+    /* GAME 2: Fill in Blanks */
+    .blank-word {
+      display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;
+      font-family: 'Fredoka One', cursive;
+      font-size: 36px;
+    }
+
+    .blank-letter {
+      width: 48px; height: 56px;
+      border: 3px solid var(--secondary);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      background: white;
+      font-size: 28px;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+      position: relative;
+    }
+
+    .blank-letter:hover { background: #eaf8ff; }
+    .blank-letter.filled { background: #eaf8ff; color: var(--text); }
+    .blank-letter.correct { border-color: var(--success); background: #e8fff7; color: var(--success); }
+    .blank-letter.wrong { border-color: var(--danger); background: #fff0f3; color: var(--danger); animation: shake 0.4s ease; }
+
+    .fill-letter-bank {
+      display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+      min-height: 52px;
+    }
+
+    .fill-letter {
+      width: 48px; height: 48px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Fredoka One', cursive;
+      font-size: 22px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 3px 0 #d4a84a;
+      user-select: none;
+    }
+
+    .fill-letter:hover { transform: translateY(-3px); box-shadow: 0 6px 0 #d4a84a; }
+    .fill-letter:active { transform: translateY(1px); box-shadow: 0 1px 0 #d4a84a; }
+    .fill-letter.selected { background: var(--secondary); box-shadow: 0 3px 0 #009bb5; color: white; transform: translateY(-2px); }
+    .fill-letter.used { opacity: 0.2; pointer-events: none; transform: scale(0.85); }
+
+    /* GAME 3: Match */
+    .match-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      width: 100%;
+    }
+
+    .match-col {
+      display: flex; flex-direction: column; gap: 10px;
+    }
+
+    .match-col-label {
+      font-size: 12px; font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .match-card {
+      padding: 12px 14px;
+      background: white;
+      border: 2.5px solid #e0e0e0;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      text-align: center;
+      font-weight: 700;
+      font-size: 14px;
+      transition: all 0.2s;
+      min-height: 52px;
+      display: flex; align-items: center; justify-content: center;
+      user-select: none;
+    }
+
+    .match-card:hover:not(.matched):not(.disabled) {
+      border-color: var(--secondary);
+      background: #eaf8ff;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .match-card.selected {
+      border-color: var(--primary);
+      background: #fff0e8;
+      box-shadow: 0 0 0 3px rgba(255,107,53,0.2);
+    }
+
+    .match-card.correct-match {
+      border-color: var(--success);
+      background: #e8fff7;
+      color: var(--success);
+      pointer-events: none;
+    }
+
+    .match-card.wrong-match {
+      border-color: var(--danger);
+      background: #fff0f3;
+      animation: shake 0.4s ease;
+    }
+
+    .match-card.matched {
+      border-color: var(--success);
+      background: #e8fff7;
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    /* ─── Action Buttons ────────────────────────────────────── */
+    .game-actions {
+      display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+      margin-top: 8px;
+    }
+
+    .attempts-hint {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .attempts-hint span { font-weight: 800; color: var(--primary); }
+
+    /* ─── Feedback Messages ────────────────────────────────── */
+    .feedback-msg {
+      font-family: 'Fredoka One', cursive;
+      font-size: 20px;
+      text-align: center;
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      animation: fadeInUp 0.3s ease;
+      min-height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px;
+    }
+
+    .feedback-msg.success { color: var(--success); background: rgba(6,214,160,0.1); }
+    .feedback-msg.error   { color: var(--danger);  background: rgba(239,71,111,0.1); }
+
+    /* ─── Results Screen ────────────────────────────────────── */
+    .results-screen {
+      text-align: center;
+      padding: 32px 16px;
+      animation: fadeInUp 0.4s ease;
+    }
+
+    .results-stars {
+      font-size: 56px;
+      margin-bottom: 16px;
+    }
+
+    .results-title {
+      font-family: 'Fredoka One', cursive;
+      font-size: 32px;
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+
+    .results-score {
+      font-size: 48px;
+      font-family: 'Fredoka One', cursive;
+      color: var(--secondary);
+      margin-bottom: 8px;
+    }
+
+    .results-detail {
+      font-size: 16px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    .results-actions {
+      display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+    }
+
+    /* ─── Animal Celebration ───────────────────────────────── */
+    .animal-overlay {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      display: flex; justify-content: center;
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    .animal-celebration {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0;
+      transform: translateY(120%);
+      transition: transform 0.45s cubic-bezier(0.34,1.56,0.64,1);
+      margin-bottom: 0;
+    }
+
+    .animal-celebration.show {
+      transform: translateY(-20px);
+    }
+
+    .speech-bubble {
+      background: white;
+      border-radius: 16px;
+      padding: 12px 22px;
+      box-shadow: var(--shadow-lg);
+      font-family: 'Fredoka One', cursive;
+      font-size: 22px;
+      color: var(--primary);
+      margin-bottom: -10px;
+      z-index: 2;
+      border-left: 5px solid var(--accent);
+      position: relative;
+    }
+
+    .speech-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -10px; left: 50%; transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-top: 10px solid white;
+    }
+
+    .animal-sprite {
+      width: 120px;
+      height: 120px;
+    }
+
+    /* ─── Empty State ──────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+    }
+
+    .empty-state .empty-icon { font-size: 56px; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 20px; margin-bottom: 8px; color: var(--text); }
+    .empty-state p { font-size: 14px; }
+
+    /* ─── Excel Upload ─────────────────────────────────────── */
+    .upload-section {
+      background: #f0f7ff;
+      border: 2px dashed rgba(0,180,216,0.35);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .upload-row {
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    }
+
+    .upload-btn {
+      background: var(--secondary);
+      color: white;
+      padding: 10px 22px;
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 14px; font-weight: 800;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      box-shadow: 0 3px 0 #009bb5;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+
+    .upload-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 0 #009bb5;
+      background: #00a8cc;
+    }
+
+    .upload-hint {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .upload-preview {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--secondary);
+      font-weight: 700;
+    }
+
+    .upload-preview.error { color: var(--danger); }
+    .upload-preview.success { color: var(--success); }
+
+    .divider-row {
+      display: flex; align-items: center; gap: 10px;
+      margin: 4px 0 12px;
+    }
+
+    .divider-row::before, .divider-row::after {
+      content: ''; flex: 1; height: 1px; background: #e0e0e0;
+    }
+
+    .divider-label {
+      font-size: 12px; color: var(--muted); font-weight: 700; white-space: nowrap;
+    }
+
+    /* ─── Animations ───────────────────────────────────────── */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%       { transform: translateX(-8px); }
+      40%       { transform: translateX(8px); }
+      60%       { transform: translateX(-6px); }
+      80%       { transform: translateX(6px); }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-8px); }
+    }
+
+    .fade-in { animation: fadeInUp 0.35s ease; }
+
+    /* ─── Scrollbar ────────────────────────────────────────── */
+    .word-list::-webkit-scrollbar { width: 6px; }
+    .word-list::-webkit-scrollbar-track { background: transparent; }
+    .word-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+    /* ─── Responsive ───────────────────────────────────────── */
+    @media (max-width: 480px) {
+      .logo-text { font-size: 20px; }
+      .score-badge { font-size: 16px; padding: 6px 14px; }
+      .game-card { padding: 20px 16px; }
+      .jumble-tile, .answer-slot { width: 44px; height: 44px; font-size: 18px; }
+      .blank-letter { width: 40px; height: 48px; font-size: 22px; }
+      .fill-letter { width: 40px; height: 40px; font-size: 18px; }
+      .match-card { font-size: 13px; padding: 10px; }
+    }
+
+    /* ─── Share Link Panel ─────────────────────────────────── */
+    .share-panel {
+      background: linear-gradient(135deg, #e8f8ff, #fff5e6);
+      border: 2px solid rgba(255,107,53,0.25);
+      border-radius: var(--radius-sm);
+      padding: 18px 20px;
+      margin-top: 14px;
+    }
+
+    .share-panel h3 {
+      font-size: 16px;
+      color: var(--primary);
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .share-panel p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .share-link-row {
+      display: flex; gap: 8px; align-items: stretch;
+    }
+
+    .share-link-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 2px solid #e0e0e0;
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      background: white;
+      outline: none;
+      min-width: 0;
+    }
+
+    .share-link-input:focus { border-color: var(--primary); }
+
+    .expiry-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 12px; font-weight: 700;
+      color: var(--primary);
+      background: rgba(255,107,53,0.1);
+      padding: 5px 10px;
+      border-radius: 50px;
+      white-space: nowrap;
+    }
+
+    .share-success {
+      font-size: 13px;
+      color: var(--success);
+      font-weight: 700;
+      margin-top: 8px;
+      display: none;
+    }
+
+    .share-success.show { display: block; animation: fadeInUp 0.3s ease; }
+
+    .expired-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+      backdrop-filter: blur(4px);
+    }
+
+    .expired-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 40px 36px;
+      text-align: center;
+      max-width: 380px;
+      margin: 16px;
+      box-shadow: var(--shadow-lg);
+      animation: fadeInUp 0.4s ease;
+    }
+
+    .expired-icon { font-size: 56px; margin-bottom: 12px; }
+    .expired-card h2 { font-size: 26px; color: var(--danger); margin-bottom: 10px; }
+    .expired-card p { color: var(--muted); font-size: 15px; margin-bottom: 24px; line-height: 1.5; }
+
+    /* ─── Confetti ─────────────────────────────────────────── */
+    .confetti-container {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: 100vh; pointer-events: none; z-index: 998;
+      overflow: hidden;
+    }
+
+    .confetti-piece {
+      position: absolute;
+      width: 10px; height: 10px;
+      top: -10px;
+      animation: confettiFall linear forwards;
+    }
+
+    @keyframes confettiFall {
+      to { transform: translateY(100vh) rotate(720deg); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Animal Overlay -->
+<div class="animal-overlay" id="animalOverlay">
+  <div class="animal-celebration" id="animalCelebration">
+    <div class="speech-bubble" id="speechBubble">Good job!</div>
+    <div id="animalSprite" class="animal-sprite"></div>
+  </div>
+</div>
+
+<!-- Confetti container -->
+<div class="confetti-container" id="confettiContainer"></div>
+
+<div class="app-wrapper">
+
+  <!-- ── Header ── -->
+  <header class="app-header">
+    <div class="logo">
+      <div class="logo-icon">🎯</div>
+      <div class="logo-text">Spelling<span>Arcade</span></div>
+    </div>
+    <div class="score-badge" id="scoreBadge">0 pts</div>
+  </header>
+
+  <!-- ── Mode Toggle ── -->
+  <div class="mode-bar">
+    <span class="mode-label">Mode</span>
+    <div class="toggle-switch" id="modeToggle" onclick="toggleMode()">
+      <div class="toggle-knob">👨‍🏫 Teacher</div>
+    </div>
+  </div>
+
+  <!-- ── Setup Panel ── -->
+  <div class="setup-panel" id="setupPanel">
+    <h2>👨‍🏫 Teacher Setup</h2>
+
+    <!-- Excel Upload -->
+    <div class="upload-section">
+      <div class="upload-row">
+        <label class="upload-btn" for="excelInput">
+          📊 Upload Excel / CSV
+        </label>
+        <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleExcelUpload(this)" />
+        <span class="upload-hint">.xlsx · .xls · .csv — Column A: English, Column B: 中文</span>
+      </div>
+      <div class="upload-preview" id="uploadPreview"></div>
+    </div>
+
+    <div class="divider-row">
+      <span class="divider-label">or add manually</span>
+    </div>
+
+    <div class="setup-form">
+      <div class="form-row">
+        <input class="english" type="text" id="inputEnglish" placeholder="English word (e.g. beautiful)" maxlength="30" />
+        <input type="text" id="inputChinese" placeholder="中文翻译 (e.g. 美丽的)" maxlength="30" />
+        <button class="btn btn-primary" onclick="addWord()">+ Add</button>
+      </div>
+    </div>
+
+    <div class="word-list" id="wordList"></div>
+
+    <p class="word-count-hint" id="wordCountHint">
+      Need at least <strong>3 words</strong> to start practice.
+    </p>
+
+    <div class="setup-actions">
+      <button class="btn btn-success" id="startBtn" onclick="startPractice()" disabled>
+        🚀 Start Practice
+      </button>
+      <button class="btn btn-danger" id="clearBtn" onclick="clearWords()" style="display:none">
+        🗑️ Clear All
+      </button>
+      <button class="btn btn-secondary" id="shareBtn" onclick="generateShareLink()" disabled style="display:none">
+        🔗 Share Link
+      </button>
+    </div>
+
+    <!-- Share Link Panel -->
+    <div class="share-panel" id="sharePanel" style="display:none">
+      <h3>🔗 Share with Students</h3>
+      <p>Copy this link and send it to your students. It works for <strong>7 days</strong>, then it expires automatically.</p>
+      <div class="share-link-row">
+        <input type="text" class="share-link-input" id="shareLinkInput" readonly
+               placeholder="Generate a link after adding your words" />
+        <button class="btn btn-primary" onclick="copyShareLink()" style="white-space:nowrap">📋 Copy</button>
+      </div>
+      <div class="expiry-tag" id="expiryTag" style="margin-top:10px; display:none">
+        ⏰ Expires in 7 days
+      </div>
+      <div class="share-success" id="shareSuccess">✅ Link copied to clipboard!</div>
+    </div>
+  </div>
+
+  <!-- ── Game Area ── -->
+  <div id="gameSection" style="display:none">
+
+    <!-- Tabs -->
+    <div class="game-tabs">
+      <button class="game-tab active" id="tab1" onclick="switchTab(1)">
+        <span class="tab-icon">🔤</span>Letter Jumble
+      </button>
+      <button class="game-tab" id="tab2" onclick="switchTab(2)">
+        <span class="tab-icon">📝</span>Fill in Blank
+      </button>
+      <button class="game-tab" id="tab3" onclick="switchTab(3)">
+        <span class="tab-icon">🔗</span>Word Match
+      </button>
+    </div>
+
+    <!-- Game Card -->
+    <div class="game-card" id="gameCard">
+
+      <!-- Progress -->
+      <div class="progress-section">
+        <div class="progress-label">
+          <span id="progressText">Word 1 of 5</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Dynamic game content injected here -->
+      <div id="gameContent"></div>
+    </div>
+  </div>
+
+</div><!-- /app-wrapper -->
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   DATA & STATE
+═══════════════════════════════════════════════════════ */
+const ANIMALS = [
+  { emoji: '🐧', name: 'penguin', speech: ['Good job!', 'Amazing!', 'Fantastic!'] },
+  { emoji: '🦁', name: 'lion', speech: ['Well done!', 'Brilliant!', 'Super!'] },
+  { emoji: '🦒', name: 'giraffe', speech: ['Yes!', 'Correct!', 'You got it!'] },
+];
+
+const STORAGE_KEY = 'spellingArcade_v1';
+
+let state = {
+  words: [],
+  mode: 'teacher',          // 'teacher' | 'student'
+  currentTab: 1,
+  score: 0,
+  // per-word tracking
+  wordIndex: 0,
+  // game 1 state
+  jumbleAttempts: 0,
+  selectedJumbleTiles: [],  // {letter, tileIndex}
+  // game 2 state
+  fillAttempts: 0,
+  fillSelectedLetter: null,
+  // game 3 state
+  matchSelected: null,
+  matchCorrect: 0,
+  matchPairs: [],           // {en, zh, matched}
+  // results
+  totalCorrect: 0,
+  totalAttempts: 0,
+};
+
+function loadWords() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      state.words = JSON.parse(saved);
+    }
+  } catch(e) {}
+}
+
+function saveWords() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.words));
+  } catch(e) {}
+}
+
+/* ═══════════════════════════════════════════════════════
+   TEACHER SETUP
+═══════════════════════════════════════════════════════ */
+function toggleMode() {
+  const el = document.getElementById('modeToggle');
+  state.mode = state.mode === 'teacher' ? 'student' : 'teacher';
+  el.classList.toggle('teacher', state.mode === 'student');
+
+  if (state.mode === 'student') {
+    document.getElementById('setupPanel').style.display = 'none';
+    if (state.words.length >= 3) {
+      document.getElementById('gameSection').style.display = 'block';
+    } else {
+      showNeedWords();
+    }
+  } else {
+    document.getElementById('setupPanel').style.display = 'block';
+    document.getElementById('gameSection').style.display = 'none';
+  }
+}
+
+function addWord() {
+  const enInput = document.getElementById('inputEnglish');
+  const zhInput = document.getElementById('inputChinese');
+  const en = enInput.value.trim();
+  const zh = zhInput.value.trim();
+
+  if (!en || !zh) {
+    enInput.focus();
+    return;
+  }
+
+  // prevent duplicates
+  if (state.words.some(w => w.en.toLowerCase() === en.toLowerCase())) {
+    enInput.style.borderColor = 'var(--danger)';
+    setTimeout(() => enInput.style.borderColor = '', 1500);
+    return;
+  }
+
+  state.words.push({ en, zh });
+  saveWords();
+  renderWordList();
+  enInput.value = '';
+  zhInput.value = '';
+  enInput.focus();
+  updateSetupUI();
+}
+
+function removeWord(index) {
+  state.words.splice(index, 1);
+  saveWords();
+  renderWordList();
+  updateSetupUI();
+}
+
+function clearWords() {
+  if (!confirm('Remove all words? This cannot be undone.')) return;
+  state.words = [];
+  saveWords();
+  renderWordList();
+  updateSetupUI();
+}
+
+function renderWordList() {
+  const list = document.getElementById('wordList');
+  if (state.words.length === 0) {
+    list.innerHTML = '';
+    return;
+  }
+  list.innerHTML = state.words.map((w, i) => `
+    <div class="word-list-item fade-in">
+      <span class="word-en">${escHtml(w.en)}</span>
+      <span class="word-zh">${escHtml(w.zh)}</span>
+      <button class="remove-btn" onclick="removeWord(${i})" title="Remove">✕</button>
+    </div>
+  `).join('');
+}
+
+function updateSetupUI() {
+  const count = state.words.length;
+  const hint = document.getElementById('wordCountHint');
+  const startBtn = document.getElementById('startBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const shareBtn = document.getElementById('shareBtn');
+
+  if (count === 0) {
+    hint.innerHTML = 'Need at least <strong>3 words</strong> to start practice.';
+    startBtn.disabled = true;
+    clearBtn.style.display = 'none';
+    shareBtn.style.display = 'none';
+  } else if (count < 3) {
+    hint.innerHTML = `Need <strong>${3 - count} more</strong> word${3-count > 1 ? 's' : ''} to start.`;
+    startBtn.disabled = true;
+    clearBtn.style.display = 'inline-flex';
+    shareBtn.style.display = 'inline-flex';
+    shareBtn.disabled = true;
+  } else {
+    hint.innerHTML = `<strong>${count} words</strong> ready!`;
+    startBtn.disabled = false;
+    clearBtn.style.display = 'inline-flex';
+    shareBtn.style.display = 'inline-flex';
+    shareBtn.disabled = false;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   GAME START / RESET
+═══════════════════════════════════════════════════════ */
+function startPractice() {
+  state.score = 0;
+  state.wordIndex = 0;
+  state.totalCorrect = 0;
+  state.totalAttempts = 0;
+  state.matchCorrect = 0;
+  updateScore(0);
+  document.getElementById('setupPanel').style.display = 'none';
+  document.getElementById('gameSection').style.display = 'block';
+  document.getElementById('gameCard').style.display = 'block';
+  loadGame(state.currentTab);
+}
+
+function showNeedWords() {
+  document.getElementById('gameSection').style.display = 'block';
+  document.getElementById('gameCard').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">📝</div>
+      <h3>No Words Yet!</h3>
+      <p>Switch to Teacher mode and add at least 3 words first.</p>
+    </div>
+  `;
+}
+
+function switchTab(tab) {
+  state.currentTab = tab;
+  document.querySelectorAll('.game-tab').forEach((t, i) => {
+    t.classList.toggle('active', i + 1 === tab);
+  });
+  loadGame(tab);
+}
+
+function loadGame(tab) {
+  state.wordIndex = 0;
+  state.matchCorrect = 0;
+  state.matchSelected = null;
+  state.matchPairs = [];
+  loadGame(tab, state.wordIndex);
+}
+
+/* ═══════════════════════════════════════════════════════
+   PROGRESS UI
+═══════════════════════════════════════════════════════ */
+function updateProgress() {
+  const total = state.words.length;
+  const current = state.wordIndex + 1;
+  const pct = Math.round((state.wordIndex / total) * 100);
+  document.getElementById('progressText').textContent = `Word ${current} of ${total}`;
+  document.getElementById('progressPercent').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+function updateScore(delta) {
+  state.score += delta;
+  const badge = document.getElementById('scoreBadge');
+  badge.textContent = state.score + ' pts';
+  if (delta > 0) {
+    badge.classList.remove('pulse');
+    void badge.offsetWidth; // reflow
+    badge.classList.add('pulse');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   GAME 1: LETTER JUMBLE
+═══════════════════════════════════════════════════════ */
+function loadGame1() {
+  updateProgress();
+  const word = state.words[state.wordIndex];
+  const letters = word.en.split('');
+  const shuffled = shuffle([...letters]);
+
+  state.jumbleLetters = shuffled;
+  state.jumbleAnswer = letters;
+  state.jumbleAttempts = 0;
+  state.jumbleUserAnswer = new Array(letters.length).fill(null);
+  state.jumbleFilledSlots = [];
+
+  renderGame1(word);
+}
+
+function renderGame1(word) {
+  const { jumbleLetters, jumbleUserAnswer } = state;
+  const usedIndices = new Set();
+
+  const content = `
+    <div class="game-area fade-in">
+      <div class="jumble-original" id="jumbleHint">Arrange the letters:</div>
+
+      <div class="answer-slots" id="answerSlots">
+        ${jumbleUserAnswer.map((l, i) => `
+          <div class="answer-slot ${l ? 'filled' : ''}" id="slot_${i}"
+               onclick="jumbleSlotClick(${i})">
+            ${l || ''}
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="letter-bank" id="letterBank">
+        ${jumbleLetters.map((l, i) => `
+          <div class="jumble-tile" id="jtile_${i}"
+               onclick="jumbleTileClick(${i})">${l}</div>
+        `).join('')}
+      </div>
+
+      <div class="feedback-msg" id="feedbackMsg" style="min-height:44px"></div>
+
+      <div class="game-actions" id="gameActions">
+        <button class="btn btn-primary" onclick="checkJumble()">Check Answer ✓</button>
+        <button class="btn btn-ghost" onclick="resetJumble()">Reset 🔄</button>
+      </div>
+
+      ${state.jumbleAttempts > 0 ? `<p class="attempts-hint">Attempt <span>${state.jumbleAttempts + 1}</span> of 3</p>` : ''}
+    </div>
+  `;
+  document.getElementById('gameContent').innerHTML = content;
+}
+
+function jumbleTileClick(tileIndex) {
+  const tile = document.getElementById('jtile_' + tileIndex);
+  if (tile.classList.contains('used')) return;
+
+  // Find first empty slot
+  const emptySlotIndex = state.jumbleUserAnswer.findIndex(x => x === null);
+  if (emptySlotIndex === -1) return;
+
+  state.jumbleUserAnswer[emptySlotIndex] = state.jumbleLetters[tileIndex];
+  state.jumbleFilledSlots.push(tileIndex);
+
+  tile.classList.add('used');
+
+  const slot = document.getElementById('slot_' + emptySlotIndex);
+  slot.textContent = state.jumbleLetters[tileIndex];
+  slot.classList.add('filled');
+}
+
+function jumbleSlotClick(slotIndex) {
+  // Remove letter from slot
+  const letter = state.jumbleUserAnswer[slotIndex];
+  if (!letter) return;
+
+  state.jumbleUserAnswer[slotIndex] = null;
+  const slot = document.getElementById('slot_' + slotIndex);
+  slot.textContent = '';
+  slot.classList.remove('filled');
+
+  // Restore tile
+  const tileIndex = state.jumbleFilledSlots.splice(
+    state.jumbleFilledSlots.findIndex(i => state.jumbleLetters[i] === letter), 1
+  )[0];
+
+  if (tileIndex !== undefined) {
+    const tile = document.getElementById('jtile_' + tileIndex);
+    if (tile) tile.classList.remove('used');
+  }
+}
+
+function resetJumble() {
+  state.jumbleUserAnswer = new Array(state.jumbleAnswer.length).fill(null);
+  state.jumbleFilledSlots = [];
+  document.querySelectorAll('.jumble-tile').forEach(t => t.classList.remove('used'));
+  document.querySelectorAll('.answer-slot').forEach((s, i) => {
+    s.textContent = '';
+    s.classList.remove('filled','correct','wrong');
+  });
+  document.getElementById('feedbackMsg').innerHTML = '';
+  const actions = document.getElementById('gameActions');
+  if (actions) actions.innerHTML = `
+    <button class="btn btn-primary" onclick="checkJumble()">Check Answer ✓</button>
+    <button class="btn btn-ghost" onclick="resetJumble()">Reset 🔄</button>
+  `;
+}
+
+function checkJumble() {
+  const userAnswer = state.jumbleUserAnswer.join('').toLowerCase();
+  const correct   = state.jumbleAnswer.join('').toLowerCase();
+
+  if (userAnswer === correct) {
+    state.jumbleAttempts = 0;
+    state.totalCorrect++;
+    updateScore(100);
+    markJumbleCorrect();
+    showFeedback('success', '🎉 Correct! +100 pts');
+    celebrateAnimal();
+    setTimeout(() => advanceWord(1), 1800);
+  } else {
+    state.jumbleAttempts++;
+    markJumbleWrong();
+    showFeedback('error', '❌ Not quite! Try again.');
+
+    if (state.jumbleAttempts >= 2) {
+      showFeedback('error', '❌ Last chance! Keep trying!');
+    }
+
+    if (state.jumbleAttempts >= 3) {
+      // Reveal correct answer
+      setTimeout(() => {
+        revealJumbleAnswer();
+        showFeedback('error', `The answer was: <strong>${state.jumbleAnswer.join('')}</strong>`);
+        setTimeout(() => advanceWord(1), 2200);
+      }, 600);
+    } else {
+      const actions = document.getElementById('gameActions');
+      if (actions) actions.innerHTML = `
+        <button class="btn btn-primary" onclick="checkJumble()">Try Again ✓</button>
+        <button class="btn btn-ghost" onclick="resetJumble()">Reset 🔄</button>
+      `;
+    }
+  }
+}
+
+function markJumbleCorrect() {
+  document.querySelectorAll('.answer-slot').forEach(s => s.classList.add('correct'));
+  document.querySelectorAll('.jumble-tile.used').forEach(t => {
+    t.classList.add('correct');
+    t.classList.remove('used');
+  });
+}
+
+function markJumbleWrong() {
+  document.querySelectorAll('.answer-slot').forEach(s => {
+    if (s.textContent) s.classList.add('wrong');
+  });
+  setTimeout(() => {
+    document.querySelectorAll('.answer-slot.wrong').forEach(s => s.classList.remove('wrong'));
+  }, 500);
+}
+
+function revealJumbleAnswer() {
+  state.jumbleUserAnswer = [...state.jumbleAnswer];
+  state.jumbleFilledSlots = state.jumbleLetters.map((_, i) => i);
+  document.querySelectorAll('.answer-slot').forEach((s, i) => {
+    s.textContent = state.jumbleAnswer[i];
+    s.classList.add('filled', 'wrong');
+  });
+  document.querySelectorAll('.jumble-tile').forEach(t => t.classList.add('used'));
+  state.jumbleAttempts = 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   GAME 2: FILL IN THE BLANKS
+═══════════════════════════════════════════════════════ */
+let fillLevel = 1;
+
+function loadGame2() {
+  updateProgress();
+  const word = state.words[state.wordIndex];
+  const letters = word.en.toUpperCase().split('');
+
+  const missingCount = fillLevel === 1 ? 1 : fillLevel === 2 ? 2 : 4;
+  const totalMissing = Math.min(missingCount, letters.length - 1);
+
+  // pick random indices to blank out
+  const indices = shuffle([...Array(letters.length).keys()]).slice(0, totalMissing);
+  const blanks = indices.sort((a, b) => a - b);
+
+  state.fillLetters = letters;
+  state.fillBlanks = blanks;
+  state.fillAttempts = 0;
+  state.fillUserAnswer = new Array(letters.length).fill(null);
+  state.fillSelectedLetter = null;
+  state.fillUsedBank = [];
+
+  renderGame2(word);
+}
+
+function renderGame2(word) {
+  const { fillLetters, fillBlanks, fillUserAnswer } = state;
+
+  const wordHtml = fillLetters.map((l, i) => {
+    const isBlank = fillBlanks.includes(i);
+    const filled = fillUserAnswer[i];
+    return `<div class="blank-letter ${filled ? 'filled' : ''}" id="blank_${i}"
+                 onclick="blankClick(${i})" data-blank="${isBlank}">
+              ${filled || (isBlank ? '_' : l)}
+            </div>`;
+  }).join('');
+
+  // letter bank: all missing letters shuffled
+  const bankLetters = shuffle(fillBlanks.map(i => fillLetters[i]));
+  const bankHtml = bankLetters.map((l, i) => `
+    <div class="fill-letter ${state.fillUsedBank.includes(i) ? 'used' : ''}"
+         id="bank_${i}" onclick="bankClick(${i})">${l}</div>
+  `).join('');
+
+  const content = `
+    <div class="game-area fade-in">
+      <div class="level-selector">
+        <button class="level-btn ${fillLevel===1?'active':''}" onclick="setFillLevel(1)">L1 — 1 missing</button>
+        <button class="level-btn ${fillLevel===2?'active':''}" onclick="setFillLevel(2)">L2 — 2 missing</button>
+        <button class="level-btn ${fillLevel===3?'active':''}" onclick="setFillLevel(3)">L3 — 4 missing</button>
+      </div>
+
+      <div class="blank-word" id="blankWord">${wordHtml}</div>
+
+      <div style="font-size:13px;color:var(--muted);font-weight:700;">Tap a letter below, then tap the blank to place it.</div>
+
+      <div class="fill-letter-bank" id="fillBank">${bankHtml}</div>
+
+      <div class="feedback-msg" id="feedbackMsg" style="min-height:44px"></div>
+
+      <div class="game-actions" id="gameActions">
+        <button class="btn btn-primary" onclick="checkFill()">Check Answer ✓</button>
+        <button class="btn btn-ghost" onclick="resetFill()">Reset 🔄</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('gameContent').innerHTML = content;
+}
+
+function setFillLevel(lvl) {
+  fillLevel = lvl;
+  loadGame2();
+}
+
+function bankClick(bankIndex) {
+  const el = document.getElementById('bank_' + bankIndex);
+  if (el.classList.contains('used')) return;
+
+  // Deselect previous
+  document.querySelectorAll('.fill-letter.selected').forEach(e => e.classList.remove('selected'));
+
+  state.fillSelectedLetter = bankIndex;
+  el.classList.add('selected');
+}
+
+function blankClick(blankIndex) {
+  if (!state.fillBlanks.includes(blankIndex)) return;
+  if (state.fillUserAnswer[blankIndex] !== null) {
+    // remove it
+    const ltr = state.fillUserAnswer[blankIndex];
+    state.fillUserAnswer[blankIndex] = null;
+    const el = document.getElementById('blank_' + blankIndex);
+    el.textContent = '_';
+    el.classList.remove('filled');
+    // restore bank letter
+    const bankEl = document.getElementById('bank_' + state.fillSelectedLetter);
+    if (bankEl) bankEl.classList.remove('used');
+    state.fillSelectedLetter = null;
+    return;
+  }
+  if (state.fillSelectedLetter === null) return;
+
+  const ltr = state.fillLetters[state.fillBlanks[state.fillSelectedLetter]];
+  state.fillUserAnswer[blankIndex] = ltr;
+
+  const el = document.getElementById('blank_' + blankIndex);
+  el.textContent = ltr;
+  el.classList.add('filled');
+
+  document.getElementById('bank_' + state.fillSelectedLetter).classList.add('used');
+  document.querySelectorAll('.fill-letter.selected').forEach(e => e.classList.remove('selected'));
+  state.fillSelectedLetter = null;
+}
+
+function resetFill() {
+  state.fillUserAnswer = new Array(state.fillLetters.length).fill(null);
+  state.fillSelectedLetter = null;
+  state.fillUsedBank = [];
+  document.querySelectorAll('.blank-letter').forEach((el, i) => {
+    if (state.fillBlanks.includes(i)) {
+      el.textContent = '_';
+    }
+    el.classList.remove('filled','correct','wrong');
+  });
+  document.querySelectorAll('.fill-letter').forEach(e => e.classList.remove('used','selected'));
+  document.getElementById('feedbackMsg').innerHTML = '';
+  const actions = document.getElementById('gameActions');
+  if (actions) actions.innerHTML = `
+    <button class="btn btn-primary" onclick="checkFill()">Check Answer ✓</button>
+    <button class="btn btn-ghost" onclick="resetFill()">Reset 🔄</button>
+  `;
+}
+
+function checkFill() {
+  const userFilled = state.fillUserAnswer.join('');
+  const correctFilled = state.fillLetters.map((l, i) =>
+    state.fillBlanks.includes(i) ? l : null
+  ).join('').replace(/null/g,'');
+
+  // check if all blanks are filled correctly
+  const allFilled = state.fillBlanks.every(i => state.fillUserAnswer[i] !== null);
+  if (!allFilled) {
+    showFeedback('error', '📝 Fill in all blanks first!');
+    return;
+  }
+
+  const correct = state.fillBlanks.every(i =>
+    state.fillUserAnswer[i] === state.fillLetters[i]
+  );
+
+  if (correct) {
+    state.totalCorrect++;
+    updateScore(100);
+    markFillCorrect();
+    showFeedback('success', '🎉 Correct! +100 pts');
+    celebrateAnimal();
+    setTimeout(() => advanceWord(2), 1800);
+  } else {
+    state.fillAttempts++;
+    markFillWrong();
+    showFeedback('error', '❌ Not quite! Try again.');
+
+    if (state.fillAttempts >= 2) {
+      showFeedback('error', '❌ Last chance! Keep trying!');
+    }
+
+    if (state.fillAttempts >= 3) {
+      setTimeout(() => {
+        revealFillAnswer();
+        const correctWord = state.fillLetters.join('');
+        showFeedback('error', `The answer was: <strong>${correctWord}</strong>`);
+        setTimeout(() => advanceWord(2), 2200);
+      }, 600);
+    } else {
+      const actions = document.getElementById('gameActions');
+      if (actions) actions.innerHTML = `
+        <button class="btn btn-primary" onclick="checkFill()">Try Again ✓</button>
+        <button class="btn btn-ghost" onclick="resetFill()">Reset 🔄</button>
+      `;
+    }
+  }
+}
+
+function markFillCorrect() {
+  document.querySelectorAll('.blank-letter').forEach(el => {
+    if (el.dataset.blank === 'true') el.classList.add('correct');
+  });
+  document.querySelectorAll('.fill-letter').forEach(e => e.classList.add('used'));
+}
+
+function markFillWrong() {
+  document.querySelectorAll('.blank-letter').forEach(el => {
+    if (el.dataset.blank === 'true') el.classList.add('wrong');
+  });
+  setTimeout(() => {
+    document.querySelectorAll('.blank-letter.wrong').forEach(e => e.classList.remove('wrong'));
+  }, 500);
+}
+
+function revealFillAnswer() {
+  state.fillBlanks.forEach(i => {
+    state.fillUserAnswer[i] = state.fillLetters[i];
+    const el = document.getElementById('blank_' + i);
+    el.textContent = state.fillLetters[i];
+    el.classList.add('filled','wrong');
+  });
+  state.fillAttempts = 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   GAME 3: WORD MATCH
+═══════════════════════════════════════════════════════ */
+function loadGame3() {
+  state.matchCorrect = 0;
+  state.matchSelected = null;
+  state.matchPairs = state.words.map(w => ({ en: w.en, zh: w.zh, matched: false }));
+  state.matchEnOrder = shuffle([...state.matchPairs]);
+  state.matchZhOrder = shuffle([...state.matchPairs]);
+  state.matchEnOrder.forEach((p, i) => p._enIdx = i);
+  state.matchZhOrder.forEach((p, i) => p._zhIdx = i);
+
+  renderMatch3();
+  updateMatchProgress();
+}
+
+function renderMatch3() {
+  const enHtml = state.matchEnOrder.map((p, i) => `
+    <div class="match-card ${p.matched ? 'matched' : ''}" id="mEn_${p._enIdx}"
+         onclick="matchSelect('en', ${p._enIdx})">${escHtml(p.en)}</div>
+  `).join('');
+
+  const zhHtml = state.matchZhOrder.map((p, i) => `
+    <div class="match-card ${p.matched ? 'matched' : ''}" id="mZh_${p._zhIdx}"
+         onclick="matchSelect('zh', ${p._zhIdx})">${escHtml(p.zh)}</div>
+  `).join('');
+
+  const content = `
+    <div class="game-area fade-in">
+      <div class="match-grid">
+        <div class="match-col">
+          <div class="match-col-label">🇬🇧 English</div>
+          ${enHtml}
+        </div>
+        <div class="match-col">
+          <div class="match-col-label">🇨🇳 中文</div>
+          ${zhHtml}
+        </div>
+      </div>
+
+      <div class="feedback-msg" id="feedbackMsg" style="min-height:44px"></div>
+    </div>
+  `;
+  document.getElementById('gameContent').innerHTML = content;
+  updateProgress(); // show overall word progress too
+}
+
+function matchSelect(side, idx) {
+  const key = side === 'en' ? 'en' : 'zh';
+  const pair = state.matchPairs.find(p => p[key] === state[`match${side === 'en' ? 'En' : 'Zh'}Order`].find(o => o[`_${key}Idx`] === idx)[key]);
+
+  if (!pair || pair.matched) return;
+
+  // Clear previous selection visual
+  document.querySelectorAll('.match-card.selected').forEach(e => e.classList.remove('selected'));
+
+  if (state.matchSelected && state.matchSelected.side !== side) {
+    // Second selection — check match
+    const firstPair = state.matchSelected.pair;
+
+    if (firstPair === pair) {
+      // Same pair — already matched, do nothing
+      state.matchSelected = null;
+      return;
+    }
+
+    if (firstPair.en === pair.en) {
+      // Same word, different side — match!
+      firstPair.matched = true;
+      pair.matched = true;
+      state.matchCorrect++;
+
+      const el1 = document.getElementById('mEn_' + firstPair._enIdx);
+      const el2 = document.getElementById('mZh_' + firstPair._zhIdx);
+      if (el1) { el1.classList.remove('selected'); el1.classList.add('correct-match'); }
+      if (el2) { el2.classList.remove('selected'); el2.classList.add('correct-match'); }
+
+      state.totalCorrect++;
+      updateScore(100);
+      updateMatchProgress();
+      showFeedback('success', '🎉 +100 pts');
+      celebrateAnimal();
+
+      state.matchSelected = null;
+
+      // Check if all matched
+      if (state.matchPairs.every(p => p.matched)) {
+        setTimeout(() => showResults(), 2000);
+      }
+    } else {
+      // Wrong pair
+      const el1 = document.getElementById('mEn_' + state.matchSelected.enIdx);
+      const el2 = document.getElementById('mZh_' + idx);
+      if (el1) { el1.classList.remove('selected'); el1.classList.add('wrong-match'); }
+      if (el2) { el2.classList.add('wrong-match'); }
+      setTimeout(() => {
+        document.querySelectorAll('.match-card.wrong-match').forEach(e => e.classList.remove('wrong-match'));
+      }, 600);
+      showFeedback('error', '❌ Try again!');
+      state.matchSelected = null;
+    }
+  } else {
+    // First selection
+    state.matchSelected = { side, pair, enIdx: pair._enIdx, zhIdx: pair._zhIdx };
+    const el = document.getElementById('m' + (side === 'en' ? 'En_' + pair._enIdx : 'Zh_' + pair._zhIdx));
+    if (el) el.classList.add('selected');
+  }
+}
+
+function updateMatchProgress() {
+  const matched = state.matchPairs.filter(p => p.matched).length;
+  const total = state.matchPairs.length;
+  document.getElementById('progressText').textContent = `Matched ${matched} of ${total}`;
+  document.getElementById('progressPercent').textContent = Math.round((matched / total) * 100) + '%';
+  document.getElementById('progressFill').style.width = ((matched / total) * 100) + '%';
+}
+
+/* ═══════════════════════════════════════════════════════
+   ADVANCE / RESULTS
+═══════════════════════════════════════════════════════ */
+function advanceWord(gameTab) {
+  state.wordIndex++;
+  if (state.wordIndex >= state.words.length) {
+    showResults();
+  } else {
+    loadGame(gameTab);
+  }
+}
+
+function loadGame(tab, wordIndex) {
+  state.wordIndex = wordIndex !== undefined ? wordIndex : state.wordIndex;
+  switch(tab) {
+    case 1: loadGame1(); break;
+    case 2: loadGame2(); break;
+    case 3: loadGame3(); break;
+  }
+}
+
+function showResults() {
+  const total = state.words.length;
+  const score = state.score;
+  const maxScore = total * 100 * 3; // rough max (all games)
+  const pct = Math.round((score / (total * 300)) * 100);
+  const stars = pct >= 90 ? 3 : pct >= 60 ? 2 : 1;
+  const starStr = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+
+  document.getElementById('gameContent').innerHTML = `
+    <div class="results-screen">
+      <div class="results-stars">${starStr}</div>
+      <div class="results-title">${stars === 3 ? '🎉 Perfect!' : stars === 2 ? '👏 Great Job!' : '💪 Keep Practicing!'}</div>
+      <div class="results-score">${score} pts</div>
+      <div class="results-detail">${state.totalCorrect} correct answers across all games</div>
+      <div class="results-actions">
+        <button class="btn btn-primary" onclick="restartPractice()">🔄 Play Again</button>
+        <button class="btn btn-secondary" onclick="backToSetup()">🏠 Home</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('progressText').textContent = 'Complete!';
+  document.getElementById('progressPercent').textContent = '100%';
+  document.getElementById('progressFill').style.width = '100%';
+  spawnConfetti();
+}
+
+function restartPractice() {
+  state.score = 0;
+  state.wordIndex = 0;
+  state.totalCorrect = 0;
+  updateScore(0);
+  loadGame(state.currentTab);
+}
+
+function backToSetup() {
+  document.getElementById('gameSection').style.display = 'none';
+  document.getElementById('setupPanel').style.display = 'block';
+  state.mode = 'teacher';
+  document.getElementById('modeToggle').classList.remove('teacher');
+  renderWordList();
+  updateSetupUI();
+}
+
+/* ═══════════════════════════════════════════════════════
+   FEEDBACK
+═══════════════════════════════════════════════════════ */
+function showFeedback(type, html) {
+  const el = document.getElementById('feedbackMsg');
+  if (!el) return;
+  el.className = 'feedback-msg ' + type;
+  el.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════
+   ANIMAL CELEBRATION
+═══════════════════════════════════════════════════════ */
+function celebrateAnimal() {
+  const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+  const speech = animal.speech[Math.floor(Math.random() * animal.speech.length)];
+
+  const sprite = document.getElementById('animalSprite');
+  const bubble = document.getElementById('speechBubble');
+  const celeb  = document.getElementById('animalCelebration');
+
+  sprite.innerHTML = getAnimalSvg(animal.name, animal.emoji);
+  bubble.textContent = speech;
+
+  celeb.classList.add('show');
+
+  clearTimeout(window._animalTimer);
+  window._animalTimer = setTimeout(() => {
+    celeb.classList.remove('show');
+  }, 1800);
+}
+
+function getAnimalSvg(name, emoji) {
+  if (name === 'penguin') {
+    return `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" width="120" height="120">
+      <ellipse cx="60" cy="70" rx="38" ry="45" fill="#2D3436"/>
+      <ellipse cx="60" cy="72" rx="26" ry="34" fill="white"/>
+      <ellipse cx="60" cy="55" rx="30" ry="30" fill="#2D3436"/>
+      <ellipse cx="60" cy="56" rx="22" ry="22" fill="white"/>
+      <circle cx="50" cy="50" r="4" fill="#2D3436"/>
+      <circle cx="70" cy="50" r="4" fill="#2D3436"/>
+      <circle cx="51" cy="49" r="1.5" fill="white"/>
+      <circle cx="71" cy="49" r="1.5" fill="white"/>
+      <path d="M55 58 Q60 64 65 58" stroke="#FF6B35" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <ellipse cx="60" cy="110" rx="14" ry="6" fill="#FF6B35"/>
+      <rect x="42" y="90" width="10" height="18" rx="5" fill="#2D3436"/>
+      <rect x="68" y="90" width="10" height="18" rx="5" fill="#2D3436"/>
+      <text x="60" y="110" text-anchor="middle" font-size="10" fill="white">🩰</text>
+    </svg>`;
+  }
+  if (name === 'lion') {
+    return `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" width="120" height="120">
+      <circle cx="60" cy="62" r="42" fill="#E8A838"/>
+      <circle cx="60" cy="62" r="34" fill="#F4B942"/>
+      <ellipse cx="60" cy="65" rx="26" ry="24" fill="#FAD978"/>
+      <circle cx="49" cy="55" r="4.5" fill="#2D3436"/>
+      <circle cx="71" cy="55" r="4.5" fill="#2D3436"/>
+      <circle cx="50" cy="54" r="1.5" fill="white"/>
+      <circle cx="72" cy="54" r="1.5" fill="white"/>
+      <ellipse cx="60" cy="66" rx="7" ry="5" fill="#2D3436"/>
+      <path d="M53 74 Q60 80 67 74" stroke="#2D3436" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <rect x="30" y="55" width="12" height="16" rx="5" fill="#F4B942" transform="rotate(-15 36 63)"/>
+      <rect x="78" y="55" width="12" height="16" rx="5" fill="#F4B942" transform="rotate(15 84 63)"/>
+      <path d="M46 44 Q42 36 46 30" stroke="#F4B942" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M54 42 Q52 34 56 28" stroke="#F4B942" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M66 42 Q68 34 64 28" stroke="#F4B942" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M74 44 Q78 36 74 30" stroke="#F4B942" stroke-width="4" fill="none" stroke-linecap="round"/>
+    </svg>`;
+  }
+  // giraffe
+  return `<svg viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg" width="120" height="140">
+    <ellipse cx="60" cy="95" rx="28" ry="38" fill="#F4B942"/>
+    <rect x="50" y="30" width="20" height="70" rx="10" fill="#F4B942"/>
+    <ellipse cx="60" cy="35" rx="22" ry="20" fill="#FAD978"/>
+    <circle cx="50" cy="30" r="3.5" fill="#C8860A"/>
+    <circle cx="68" cy="28" r="3.5" fill="#C8860A"/>
+    <circle cx="58" cy="18" r="3" fill="#C8860A"/>
+    <circle cx="72" cy="36" r="3" fill="#C8860A"/>
+    <circle cx="46" cy="42" r="2.5" fill="#C8860A"/>
+    <circle cx="50" cy="55" r="4" fill="#2D3436"/>
+    <circle cx="70" cy="55" r="4" fill="#2D3436"/>
+    <circle cx="51" cy="54" r="1.5" fill="white"/>
+    <circle cx="71" cy="54" r="1.5" fill="white"/>
+    <ellipse cx="60" cy="63" rx="5" ry="4" fill="#C8860A"/>
+    <path d="M55 68 Q60 73 65 68" stroke="#C8860A" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <rect x="53" y="0" width="4" height="18" rx="2" fill="#C8860A"/>
+    <rect x="63" y="0" width="4" height="18" rx="2" fill="#C8860A"/>
+    <circle cx="55" cy="0" r="3" fill="#C8860A"/>
+    <circle cx="65" cy="0" r="3" fill="#C8860A"/>
+    <rect x="40" y="95" width="8" height="28" rx="4" fill="#C8860A"/>
+    <rect x="72" y="95" width="8" height="28" rx="4" fill="#C8860A"/>
+  </svg>`;
+}
+
+/* ═══════════════════════════════════════════════════════
+   CONFETTI
+═══════════════════════════════════════════════════════ */
+function spawnConfetti() {
+  const container = document.getElementById('confettiContainer');
+  container.innerHTML = '';
+  const colors = ['#FF6B35','#FFD166','#06D6A0','#00B4D8','#EF476F','#8338EC'];
+  for (let i = 0; i < 60; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+    piece.style.width = (6 + Math.random() * 8) + 'px';
+    piece.style.height = (6 + Math.random() * 8) + 'px';
+    piece.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+    piece.style.animationDelay = (Math.random() * 0.8) + 's';
+    container.appendChild(piece);
+  }
+  setTimeout(() => container.innerHTML = '', 4000);
+}
+
+/* ═══════════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════════ */
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+/* ═══════════════════════════════════════════════════════
+   EXCEL UPLOAD
+═══════════════════════════════════════════════════════ */
+function handleExcelUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const preview = document.getElementById('uploadPreview');
+  preview.textContent = '⏳ Reading file...';
+  preview.className = 'upload-preview';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      let workbook;
+      const filename = file.name.toLowerCase();
+
+      if (filename.endsWith('.csv')) {
+        // Parse CSV manually
+        const text = e.target.result;
+        const rows = parseCSV(text);
+        processUploadRows(rows, file.name);
+      } else {
+        // Parse Excel with SheetJS
+        workbook = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+        processUploadRows(rows, file.name);
+      }
+    } catch(err) {
+      const preview = document.getElementById('uploadPreview');
+      preview.textContent = '❌ Error reading file: ' + err.message;
+      preview.className = 'upload-preview error';
+      console.error(err);
+    }
+  };
+  reader.onerror = function() {
+    const preview = document.getElementById('uploadPreview');
+    preview.textContent = '❌ Could not read file.';
+    preview.className = 'upload-preview error';
+  };
+
+  if (file.name.toLowerCase().endsWith('.csv')) {
+    reader.readAsText(file);
+  } else {
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function parseCSV(text) {
+  const lines = text.split(/\r\n|\n/);
+  const rows = [];
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    // Simple CSV split — handles quoted commas
+    const parts = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i+1] === '"') { current += '"'; i++; }
+        else inQuotes = !inQuotes;
+      } else if (ch === ',' && !inQuotes) {
+        parts.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    parts.push(current.trim());
+    rows.push(parts);
+  }
+  return rows;
+}
+
+function processUploadRows(rows, filename) {
+  // Skip header row if it looks like a header
+  let startIdx = 0;
+  const firstRow = rows[0] || [];
+  const hasHeader = firstRow.some(cell =>
+    /^(word|english|中文|translation|pinyin|term)$/i.test(String(cell).trim())
+  );
+  if (hasHeader) startIdx = 1;
+
+  let addedCount = 0;
+  let skipCount = 0;
+  const errors = [];
+
+  for (let i = startIdx; i < rows.length; i++) {
+    const row = rows[i];
+    const en = String(row[0] || '').trim();
+    const zh = String(row[1] || '').trim();
+
+    if (!en && !zh) continue;
+
+    if (!en || !zh) {
+      skipCount++;
+      if (errors.length < 3) errors.push(`Row ${i + 1}: missing "${en || zh ? (en ? 'Chinese' : 'English') : 'both'}"`);
+      continue;
+    }
+
+    // Clean the word (remove extra spaces)
+    const cleanEn = en.replace(/\s+/g, ' ');
+    const cleanZh = zh.replace(/\s+/g, ' ');
+
+    // Skip duplicates
+    if (state.words.some(w => w.en.toLowerCase() === cleanEn.toLowerCase())) {
+      skipCount++;
+      continue;
+    }
+
+    state.words.push({ en: cleanEn, zh: cleanZh });
+    addedCount++;
+  }
+
+  saveWords();
+  renderWordList();
+  updateSetupUI();
+
+  const preview = document.getElementById('uploadPreview');
+  let msg = `✅ Loaded <strong>${addedCount} words</strong> from ${filename}`;
+  if (skipCount > 0) msg += ` (${skipCount} skipped)`;
+  if (errors.length > 0) msg += '<br>' + errors.join('<br>');
+  preview.innerHTML = msg;
+  preview.className = 'upload-preview success';
+
+  // Reset file input so same file can be re-uploaded
+  document.getElementById('excelInput').value = '';
+}
+
+/* ═══════════════════════════════════════════════════════
+   SHARE LINK — ENCODE / DECODE
+═══════════════════════════════════════════════════════ */
+const LINK_DAYS = 7; // link expires after 7 days
+
+function generateShareLink() {
+  if (state.words.length < 3) return;
+
+  const expiryTs = Date.now() + LINK_DAYS * 24 * 60 * 60 * 1000;
+  const payload = JSON.stringify({ words: state.words, exp: expiryTs });
+  const encoded = btoa(unescape(encodeURIComponent(payload)));
+
+  // Use the current page URL as base
+  const baseUrl = window.location.href.split('#')[0];
+  const shareUrl = baseUrl + '#w=' + encoded;
+
+  const input = document.getElementById('shareLinkInput');
+  input.value = shareUrl;
+
+  const sharePanel = document.getElementById('sharePanel');
+  const expiryTag = document.getElementById('expiryTag');
+  sharePanel.style.display = 'block';
+  expiryTag.style.display = 'inline-flex';
+
+  // Calculate days remaining
+  const daysLeft = Math.ceil((expiryTs - Date.now()) / (24 * 60 * 60 * 1000));
+  expiryTag.innerHTML = `⏰ Expires in <strong>${daysLeft} days</strong>`;
+}
+
+function copyShareLink() {
+  const input = document.getElementById('shareLinkInput');
+  if (!input.value) return;
+  navigator.clipboard.writeText(input.value).then(() => {
+    const el = document.getElementById('shareSuccess');
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
+  }).catch(() => {
+    // Fallback
+    input.select();
+    document.execCommand('copy');
+    const el = document.getElementById('shareSuccess');
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
+  });
+}
+
+function loadFromShareLink() {
+  const hash = window.location.hash;
+  if (!hash || !hash.startsWith('#w=')) return null;
+
+  try {
+    const encoded = hash.slice(3);
+    const payload = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+    const now = Date.now();
+
+    if (!payload.words || !Array.isArray(payload.words)) return null;
+    if (payload.exp && payload.exp < now) return { expired: true };
+
+    return { words: payload.words, exp: payload.exp };
+  } catch(e) {
+    return null;
+  }
+}
+
+function showExpiredOverlay() {
+  const overlay = document.createElement('div');
+  overlay.className = 'expired-overlay';
+  overlay.id = 'expiredOverlay';
+  overlay.innerHTML = `
+    <div class="expired-card">
+      <div class="expired-icon">⏰</div>
+      <h2>Link Expired!</h2>
+      <p>This spelling practice link has expired.<br>Ask your teacher for a new one. 🙂</p>
+      <button class="btn btn-primary" onclick="closeExpiredOverlay()">OK</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function closeExpiredOverlay() {
+  const el = document.getElementById('expiredOverlay');
+  if (el) el.remove();
+  // Switch to teacher mode so they can set up new words
+  if (state.mode === 'student') toggleMode();
+}
+
+/* ═══════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════ */
+(function init() {
+  // Check for share link FIRST — before loading localStorage
+  const linkData = loadFromShareLink();
+
+  if (linkData) {
+    if (linkData.expired) {
+      showExpiredOverlay();
+      // Fall through — teacher can set up fresh words
+    } else {
+      // Pre-load words from URL
+      state.words = linkData.words;
+      saveWords();
+      // Auto-switch to student mode
+      state.mode = 'student';
+      document.getElementById('modeToggle').classList.add('teacher');
+      document.getElementById('setupPanel').style.display = 'none';
+      document.getElementById('gameSection').style.display = 'block';
+
+      // Show a welcome banner
+      const banner = document.createElement('div');
+      banner.style.cssText = 'background:var(--secondary);color:white;text-align:center;padding:10px;font-weight:700;font-size:14px;margin-bottom:16px;border-radius:12px;animation:fadeInUp 0.4s ease';
+      banner.textContent = '📚 Your teacher\'s words are ready! Choose a game and start! ';
+      document.querySelector('.game-tabs').before(banner);
+    }
+  }
+
+  loadWords();
+  renderWordList();
+  updateSetupUI();
+
+  // Handle Enter key in inputs
+  document.getElementById('inputEnglish').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('inputChinese').focus();
+  });
+  document.getElementById('inputChinese').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addWord();
+  });
+})();
+</script>
+</body>
+</html>
