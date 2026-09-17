@@ -495,6 +495,39 @@
     .fill-letter.selected { background: var(--secondary); box-shadow: 0 3px 0 #009bb5; color: white; transform: translateY(-2px); }
     .fill-letter.used { opacity: 0.2; pointer-events: none; transform: scale(0.85); }
 
+    /* QWERTY Keyboard (Game 2) */
+    .qwerty-keyboard {
+      display: flex; flex-direction: column; gap: 8px; align-items: center;
+      padding: 16px 8px;
+      background: #e8e8e8;
+      border-radius: var(--radius-sm);
+      border: 2px solid #d0d0d0;
+    }
+
+    .qwerty-row {
+      display: flex; gap: 5px;
+    }
+
+    .qwerty-key {
+      width: 38px; height: 42px;
+      background: white;
+      border: 2px solid #ccc;
+      border-bottom: 4px solid #aaa;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Fredoka One', cursive;
+      font-size: 17px;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .qwerty-key:hover { background: #fff0e8; border-color: var(--primary); transform: translateY(-2px); }
+    .qwerty-key:active { transform: translateY(1px); border-bottom-width: 2px; }
+    .qwerty-key.selected { background: var(--primary); color: white; border-color: var(--primary-dk); border-bottom-color: var(--primary-dk); transform: translateY(-2px); }
+    .qwerty-key.used { background: #f0f0f0; color: #bbb; border-color: #ddd; border-bottom-color: #ccc; cursor: default; opacity: 0.5; pointer-events: none; transform: none; }
+
     /* GAME 3: Match */
     .match-grid {
       display: grid;
@@ -787,6 +820,7 @@
       .jumble-tile, .answer-slot { width: 44px; height: 44px; font-size: 18px; }
       .blank-letter { width: 40px; height: 48px; font-size: 22px; }
       .fill-letter { width: 40px; height: 40px; font-size: 18px; }
+      .qwerty-key { width: 30px; height: 36px; font-size: 14px; }
       .match-card { font-size: 13px; padding: 10px; }
     }
 
@@ -1425,6 +1459,7 @@ function revealJumbleAnswer() {
    GAME 2: FILL IN THE BLANKS
 ═══════════════════════════════════════════════════════ */
 let fillLevel = 1;
+const QWERTY = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
 
 function loadGame2() {
   updateProgress();
@@ -1442,8 +1477,9 @@ function loadGame2() {
   state.fillBlanks = blanks;
   state.fillAttempts = 0;
   state.fillUserAnswer = new Array(letters.length).fill(null);
-  state.fillSelectedLetter = null;
-  state.fillUsedBank = [];
+  state.fillSelectedKey = null;         // which keyboard key is selected
+  state.fillKeyAssignedTo = {};         // letter -> blankIndex (if placed in a blank)
+  state.fillBlankAssignedKey = {};      // blankIndex -> letter (if filled)
 
   renderGame2(word);
 }
@@ -1460,12 +1496,17 @@ function renderGame2(word) {
             </div>`;
   }).join('');
 
-  // letter bank: all missing letters shuffled
-  const bankLetters = shuffle(fillBlanks.map(i => fillLetters[i]));
-  const bankHtml = bankLetters.map((l, i) => `
-    <div class="fill-letter ${state.fillUsedBank.includes(i) ? 'used' : ''}"
-         id="bank_${i}" onclick="bankClick(${i})">${l}</div>
-  `).join('');
+  // Full QWERTY keyboard
+  const keyboardHtml = QWERTY.map((row, rowIdx) => {
+    const keys = row.split('').map(letter => {
+      const isUsed = state.fillKeyAssignedTo[letter] !== undefined;
+      return `<div class="qwerty-key ${isUsed ? 'used' : ''}"
+                   id="qkey_${letter}"
+                   onclick="qkeyClick('${letter}')">${letter}</div>`;
+    }).join('');
+    const marginLeft = rowIdx === 1 ? 14 : rowIdx === 2 ? 28 : 0;
+    return `<div class="qwerty-row" style="margin-left:${marginLeft}px">${keys}</div>`;
+  }).join('');
 
   const content = `
     <div class="game-area fade-in">
@@ -1477,11 +1518,13 @@ function renderGame2(word) {
 
       <div class="blank-word" id="blankWord">${wordHtml}</div>
 
-      <div style="font-size:13px;color:var(--muted);font-weight:700;">Tap a letter below, then tap the blank to place it.</div>
+      <div style="font-size:13px;color:var(--muted);font-weight:700;margin-bottom:12px;">
+        Tap a letter on the keyboard, then tap the blank to type it in.
+      </div>
 
-      <div class="fill-letter-bank" id="fillBank">${bankHtml}</div>
+      <div class="qwerty-keyboard" id="fillBank">${keyboardHtml}</div>
 
-      <div class="feedback-msg" id="feedbackMsg" style="min-height:44px"></div>
+      <div class="feedback-msg" id="feedbackMsg" style="min-height:44px;margin-top:12px"></div>
 
       <div class="game-actions" id="gameActions">
         <button class="btn btn-primary" onclick="checkFill()">Check Answer ✓</button>
@@ -1497,57 +1540,67 @@ function setFillLevel(lvl) {
   loadGame2();
 }
 
-function bankClick(bankIndex) {
-  const el = document.getElementById('bank_' + bankIndex);
-  if (el.classList.contains('used')) return;
+function qkeyClick(letter) {
+  // If already used in a blank, do nothing
+  if (state.fillKeyAssignedTo[letter] !== undefined) return;
 
   // Deselect previous
-  document.querySelectorAll('.fill-letter.selected').forEach(e => e.classList.remove('selected'));
+  document.querySelectorAll('.qwerty-key.selected').forEach(e => e.classList.remove('selected'));
 
-  state.fillSelectedLetter = bankIndex;
-  el.classList.add('selected');
+  // Select this key
+  state.fillSelectedKey = letter;
+  document.getElementById('qkey_' + letter).classList.add('selected');
 }
 
 function blankClick(blankIndex) {
   if (!state.fillBlanks.includes(blankIndex)) return;
+
   if (state.fillUserAnswer[blankIndex] !== null) {
-    // remove it
-    const ltr = state.fillUserAnswer[blankIndex];
+    // Blank already filled — return letter to keyboard
+    const letter = state.fillBlankAssignedKey[blankIndex];
+    if (letter !== undefined) {
+      delete state.fillKeyAssignedTo[letter];
+      delete state.fillBlankAssignedKey[blankIndex];
+      const keyEl = document.getElementById('qkey_' + letter);
+      if (keyEl) keyEl.classList.remove('used');
+    }
     state.fillUserAnswer[blankIndex] = null;
     const el = document.getElementById('blank_' + blankIndex);
     el.textContent = '_';
     el.classList.remove('filled');
-    // restore bank letter
-    const bankEl = document.getElementById('bank_' + state.fillSelectedLetter);
-    if (bankEl) bankEl.classList.remove('used');
-    state.fillSelectedLetter = null;
     return;
   }
-  if (state.fillSelectedLetter === null) return;
 
-  const ltr = state.fillLetters[state.fillBlanks[state.fillSelectedLetter]];
-  state.fillUserAnswer[blankIndex] = ltr;
+  // No keyboard key selected — do nothing
+  if (!state.fillSelectedKey) return;
+
+  // Place the selected letter into the blank
+  const letter = state.fillSelectedKey;
+  state.fillUserAnswer[blankIndex] = letter;
+  state.fillKeyAssignedTo[letter] = blankIndex;
+  state.fillBlankAssignedKey[blankIndex] = letter;
 
   const el = document.getElementById('blank_' + blankIndex);
-  el.textContent = ltr;
+  el.textContent = letter;
   el.classList.add('filled');
 
-  document.getElementById('bank_' + state.fillSelectedLetter).classList.add('used');
-  document.querySelectorAll('.fill-letter.selected').forEach(e => e.classList.remove('selected'));
-  state.fillSelectedLetter = null;
+  const keyEl = document.getElementById('qkey_' + letter);
+  keyEl.classList.add('used');
+  keyEl.classList.remove('selected');
+
+  state.fillSelectedKey = null;
 }
 
 function resetFill() {
   state.fillUserAnswer = new Array(state.fillLetters.length).fill(null);
-  state.fillSelectedLetter = null;
-  state.fillUsedBank = [];
+  state.fillSelectedKey = null;
+  state.fillKeyAssignedTo = {};
+  state.fillBlankAssignedKey = {};
   document.querySelectorAll('.blank-letter').forEach((el, i) => {
-    if (state.fillBlanks.includes(i)) {
-      el.textContent = '_';
-    }
-    el.classList.remove('filled','correct','wrong');
+    el.textContent = state.fillBlanks.includes(i) ? '_' : state.fillLetters[i];
+    el.classList.remove('filled', 'correct', 'wrong');
   });
-  document.querySelectorAll('.fill-letter').forEach(e => e.classList.remove('used','selected'));
+  document.querySelectorAll('.qwerty-key').forEach(e => e.classList.remove('used', 'selected'));
   document.getElementById('feedbackMsg').innerHTML = '';
   const actions = document.getElementById('gameActions');
   if (actions) actions.innerHTML = `
@@ -1557,12 +1610,6 @@ function resetFill() {
 }
 
 function checkFill() {
-  const userFilled = state.fillUserAnswer.join('');
-  const correctFilled = state.fillLetters.map((l, i) =>
-    state.fillBlanks.includes(i) ? l : null
-  ).join('').replace(/null/g,'');
-
-  // check if all blanks are filled correctly
   const allFilled = state.fillBlanks.every(i => state.fillUserAnswer[i] !== null);
   if (!allFilled) {
     showFeedback('error', '📝 Fill in all blanks first!');
@@ -1610,7 +1657,7 @@ function markFillCorrect() {
   document.querySelectorAll('.blank-letter').forEach(el => {
     if (el.dataset.blank === 'true') el.classList.add('correct');
   });
-  document.querySelectorAll('.fill-letter').forEach(e => e.classList.add('used'));
+  document.querySelectorAll('.qwerty-key').forEach(e => e.classList.add('used'));
 }
 
 function markFillWrong() {
@@ -1627,7 +1674,7 @@ function revealFillAnswer() {
     state.fillUserAnswer[i] = state.fillLetters[i];
     const el = document.getElementById('blank_' + i);
     el.textContent = state.fillLetters[i];
-    el.classList.add('filled','wrong');
+    el.classList.add('filled', 'wrong');
   });
   state.fillAttempts = 0;
 }
