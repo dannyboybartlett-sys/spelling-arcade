@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mr. Danny's Spelling Arcade</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
@@ -98,6 +100,130 @@
     .score-badge.pulse {
       animation: scorePulse 0.4s ease;
     }
+
+    .trophy-btn {
+      width: 42px; height: 42px;
+      background: var(--accent);
+      border: none;
+      border-radius: 12px;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 3px 0 #d4a84a;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .trophy-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 0 #d4a84a; }
+    .trophy-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 #d4a84a; }
+
+    /* ─── Leaderboard Overlay ─────────────────────────────── */
+    .leaderboard-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9000;
+      padding: 16px;
+    }
+    .leaderboard-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      animation: fadeInUp 0.35s ease;
+    }
+    .leaderboard-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .leaderboard-header h2 {
+      font-size: 22px; color: var(--primary);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .close-btn {
+      width: 36px; height: 36px;
+      border: 2px solid #e0e0e0;
+      border-radius: 50%;
+      background: white;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+      color: var(--muted);
+    }
+    .close-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+    .lb-entry {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      animation: fadeInUp 0.25s ease;
+    }
+    .lb-entry:nth-child(odd) { background: #f8f8f8; }
+    .lb-rank {
+      font-family: 'Fredoka One', cursive;
+      font-size: 18px;
+      width: 30px; text-align: center;
+      color: var(--muted);
+    }
+    .lb-rank.gold { color: #FFD700; }
+    .lb-rank.silver { color: #C0C0C0; }
+    .lb-rank.bronze { color: #CD7F32; }
+    .lb-name {
+      flex: 1; font-weight: 700; font-size: 15px;
+      color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .lb-score {
+      font-family: 'Fredoka One', cursive;
+      font-size: 18px;
+      color: var(--secondary);
+    }
+    .lb-date {
+      font-size: 11px; color: var(--muted); margin-left: 4px;
+    }
+    .lb-empty {
+      text-align: center; padding: 32px 16px; color: var(--muted);
+      font-size: 15px;
+    }
+    .lb-empty-icon { font-size: 40px; margin-bottom: 8px; display: block; }
+
+    .lb-actions {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px;
+      border-top: 1px solid #eee; padding-top: 16px;
+    }
+
+    /* Name entry on results */
+    .name-entry-row {
+      display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;
+    }
+    .name-entry-input {
+      flex: 1; min-width: 120px;
+      padding: 9px 14px;
+      border: 2px solid #e0e0e0;
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 14px; font-weight: 600;
+      outline: none;
+    }
+    .name-entry-input:focus { border-color: var(--secondary); }
+
+    .qr-section {
+      margin-top: 16px;
+      background: #f0f7ff;
+      border: 2px dashed rgba(0,180,216,0.3);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      text-align: center;
+    }
+    .qr-section h4 { font-size: 14px; color: var(--secondary); margin-bottom: 8px; }
+    .qr-section p { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+    #qrcode { display: flex; justify-content: center; margin-bottom: 10px; }
+    #qrcode canvas, #qrcode img { border-radius: 8px; }
+    .lb-hint { font-size: 12px; color: var(--muted); margin-top: 8px; text-align: center; }
 
     @keyframes scorePulse {
       0%   { transform: scale(1); }
@@ -1050,6 +1176,7 @@
       <div class="logo-text">Mr. Danny's <span>Spelling Arcade</span></div>
     </div>
     <div class="score-badge" id="scoreBadge">0 pts</div>
+    <button class="trophy-btn" id="trophyBtn" onclick="openLeaderboard()" title="Scoreboard">🏆</button>
   </header>
 
   <!-- ── Mode Toggle ── -->
@@ -1179,6 +1306,7 @@ let state = {
   mode: 'teacher',          // 'teacher' | 'student'
   currentTab: 1,
   score: 0,
+  isSharedLink: false,      // true when loaded from a shareable link
   // per-word tracking
   wordIndex: 0,
   // game 1 state
@@ -1215,6 +1343,8 @@ function saveWords() {
    TEACHER SETUP
 ═══════════════════════════════════════════════════════ */
 function toggleMode() {
+  // Block switching to teacher mode when using a shared student link
+  if (state.isSharedLink) return;
   const el = document.getElementById('modeToggle');
   state.mode = state.mode === 'teacher' ? 'student' : 'teacher';
   el.classList.toggle('teacher', state.mode === 'student');
@@ -1748,9 +1878,12 @@ function checkFill() {
       }, 600);
     } else {
       const actions = document.getElementById('gameActions');
+      const resetBtn = state.fillAttempts === 1
+        ? '<button class="btn btn-ghost" onclick="resetFill()">Reset 🔄</button>'
+        : '';
       if (actions) actions.innerHTML = `
         <button class="btn btn-primary" onclick="checkFill()">Try Again ✓</button>
-        <button class="btn btn-ghost" onclick="resetFill()">Reset 🔄</button>
+        ${resetBtn}
       `;
     }
   }
@@ -2081,6 +2214,9 @@ function advanceWord(gameTab) {
 }
 
 function loadGame(tab, wordIndex) {
+  // Clear any running game timers before switching
+  if (state.memoryTimer) { clearInterval(state.memoryTimer); state.memoryTimer = null; }
+
   state.wordIndex = wordIndex !== undefined ? wordIndex : state.wordIndex;
   if (!state.words || state.words.length === 0) {
     document.getElementById('gameContent').innerHTML = `
@@ -2129,8 +2265,39 @@ function showResults() {
         <button class="btn btn-primary" onclick="restartPractice()">🔄 Play Again</button>
         <button class="btn btn-secondary" onclick="backToSetup()">🏠 Home</button>
       </div>
+      <div id="saveScoreSection"></div>
     </div>
   `;
+
+  // Show name entry / save score prompt
+  setTimeout(() => {
+    const section = document.getElementById('saveScoreSection');
+    const savedName = getPlayerName();
+    if (savedName) {
+      section.innerHTML = `
+        <div style="text-align:center;margin-top:16px;">
+          <p style="font-size:14px;color:var(--muted);margin-bottom:8px;">Save your score as <strong>${escHtml(savedName)}</strong>?</p>
+          <button class="btn btn-success" onclick="saveScore('${escHtml(savedName)}', ${score}); document.getElementById('saveScoreSection').innerHTML='<p style=\'color:var(--success);font-weight:700\'>✅ Score saved to leaderboard!</p>'">💾 Save to Scoreboard</button>
+        </div>
+      `;
+    } else {
+      section.innerHTML = `
+        <div style="text-align:center;margin-top:16px;">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">Enter your name to save your score:</p>
+          <div class="name-entry-row">
+            <input type="text" class="name-entry-input" id="rsNameInput" placeholder="Your name..." maxlength="20"
+              onkeydown="if(event.key==='Enter'){
+                const n=document.getElementById('rsNameInput').value.trim();
+                if(n){setPlayerName(n);saveScore(n,${score});
+                  document.getElementById('saveScoreSection').innerHTML='<p style=\'color:var(--success);font-weight:700\'>✅ ${escHtml(n)} scored ${score} pts!</p>'}
+              }" />
+            <button class="btn btn-success" onclick="var n=document.getElementById('rsNameInput').value.trim();if(n){setPlayerName(n);saveScore(n,${score});document.getElementById('saveScoreSection').innerHTML='<p style=\'color:var(--success);font-weight:700\'>✅ ${escHtml(n)} scored ${score} pts!</p>'}">💾 Save</button>
+          </div>
+        </div>
+      `;
+      setTimeout(() => { const inp = document.getElementById('rsNameInput'); if (inp) inp.focus(); }, 200);
+    }
+  }, 300);
 
   document.getElementById('progressText').textContent = 'Complete!';
   document.getElementById('progressPercent').textContent = '100%';
@@ -2150,6 +2317,8 @@ function backToSetup() {
   document.getElementById('gameSection').style.display = 'none';
   document.getElementById('setupPanel').style.display = 'block';
   state.mode = 'teacher';
+  state.isSharedLink = false;
+  document.getElementById('modeToggle').style.display = 'flex';
   document.getElementById('modeToggle').classList.remove('teacher');
   renderWordList();
   updateSetupUI();
@@ -2432,7 +2601,10 @@ function generateShareLink() {
 
   const expiryTs = Date.now() + LINK_DAYS * 24 * 60 * 60 * 1000;
   const payload = JSON.stringify({ words: state.words, exp: expiryTs });
-  const encoded = btoa(unescape(encodeURIComponent(payload)));
+  // Use LZ-String compression to keep the link short
+  const encoded = typeof LZString !== 'undefined'
+    ? LZString.compressToEncodedURIComponent(payload)
+    : btoa(unescape(encodeURIComponent(payload)));
 
   // Use the current page URL as base
   const baseUrl = window.location.href.split('#')[0];
@@ -2474,7 +2646,11 @@ function loadFromShareLink() {
 
   try {
     const encoded = hash.slice(3);
-    const payload = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+    const payload = JSON.parse(
+      typeof LZString !== 'undefined'
+        ? LZString.decompressFromEncodedURIComponent(encoded) || '{}'
+        : decodeURIComponent(escape(atob(encoded)))
+    );
     const now = Date.now();
 
     if (!payload.words || !Array.isArray(payload.words)) return null;
@@ -2509,9 +2685,292 @@ function closeExpiredOverlay() {
 }
 
 /* ═══════════════════════════════════════════════════════
+   LEADERBOARD
+═══════════════════════════════════════════════════════ */
+const LB_KEY = 'spellingArcadeLB_v1';
+const LB_EXPIRY_DAYS = 7;
+
+function getLeaderboard() {
+  try {
+    const raw = localStorage.getItem(LB_KEY);
+    if (!raw) return [];
+    const entries = JSON.parse(raw);
+    const cutoff = Date.now() - LB_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+    return entries.filter(e => e.ts > cutoff).sort((a, b) => b.score - a.score);
+  } catch(e) { return []; }
+}
+
+function saveLeaderboard(entries) {
+  try {
+    localStorage.setItem(LB_KEY, JSON.stringify(entries));
+  } catch(e) {}
+}
+
+function saveScore(name, score) {
+  const entries = getLeaderboard();
+  // Replace existing entry for this name if lower score
+  const idx = entries.findIndex(e => e.name.toLowerCase() === name.toLowerCase());
+  const newEntry = { name: name.trim(), score, ts: Date.now() };
+  if (idx >= 0) {
+    if (entries[idx].score < score) {
+      entries[idx] = newEntry;
+    }
+  } else {
+    entries.push(newEntry);
+  }
+  saveLeaderboard(entries);
+}
+
+function getPlayerName() {
+  return localStorage.getItem('spellingArcadeName') || '';
+}
+
+function setPlayerName(name) {
+  localStorage.setItem('spellingArcadeName', name.trim());
+}
+
+function renderLeaderboard() {
+  const entries = getLeaderboard();
+  const playerName = getPlayerName();
+
+  if (entries.length === 0) {
+    return `
+      <div class="lb-empty">
+        <span class="lb-empty-icon">🏆</span>
+        <p>No scores yet!</p>
+        <p>Complete a practice session and enter your name to appear here.</p>
+      </div>
+    `;
+  }
+
+  return entries.slice(0, 50).map((e, i) => {
+    const isYou = e.name.toLowerCase() === playerName.toLowerCase();
+    const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+    const dateStr = new Date(e.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `
+      <div class="lb-entry" style="${isYou ? 'background:#fff5e6;border:2px solid var(--accent);' : ''}">
+        <span class="lb-rank ${rankClass}">${medal || (i + 1)}</span>
+        <span class="lb-name">${escHtml(e.name)}${isYou ? ' (you)' : ''}</span>
+        <span class="lb-score">${e.score}<span class="lb-date">pts · ${dateStr}</span></span>
+      </div>
+    `;
+  }).join('');
+}
+
+function openLeaderboard() {
+  const lb = getLeaderboard();
+  const playerName = getPlayerName();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'leaderboard-overlay';
+  overlay.id = 'lbOverlay';
+  overlay.onclick = function(e) {
+    if (e.target === overlay) closeLeaderboard();
+  };
+
+  overlay.innerHTML = `
+    <div class="leaderboard-card">
+      <div class="leaderboard-header">
+        <h2>🏆 Scoreboard</h2>
+        <button class="close-btn" onclick="closeLeaderboard()">✕</button>
+      </div>
+      <div id="lbContent">${renderLeaderboard()}</div>
+      ${!playerName ? `
+        <div class="name-entry-row">
+          <input type="text" class="name-entry-input" id="lbNameInput"
+                 placeholder="Enter your name..." maxlength="20"
+                 onkeydown="if(event.key==='Enter')saveLbName()" />
+          <button class="btn btn-secondary" onclick="saveLbName()">Set Name</button>
+        </div>
+      ` : `
+        <div style="margin-top:12px;font-size:13px;color:var(--muted);font-weight:700;">
+          Logged in as: <span style="color:var(--text)">${escHtml(playerName)}</span>
+          <button class="btn btn-ghost" onclick="changeLbName()" style="margin-left:8px;font-size:12px;padding:4px 10px;">Change</button>
+        </div>
+      `}
+
+      <div class="lb-actions">
+        <button class="btn btn-primary" onclick="saveCurrentScoreToLB()">
+          💾 Save Current Score (${state.score} pts)
+        </button>
+        <button class="btn btn-secondary" onclick="showQRCode()">
+          📱 Share QR Code
+        </button>
+      </div>
+
+      <div class="qr-section" id="qrSection" style="display:none">
+        <h4>📱 Scan to import scores</h4>
+        <p>Students scan this QR code with their phone to get the latest scores!</p>
+        <div id="qrcode"></div>
+        <p class="lb-hint">Scores auto-expire after 7 days</p>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+}
+
+function closeLeaderboard() {
+  const el = document.getElementById('lbOverlay');
+  if (el) el.remove();
+}
+
+function saveLbName() {
+  const input = document.getElementById('lbNameInput');
+  if (!input || !input.value.trim()) return;
+  setPlayerName(input.value.trim());
+  // Refresh the leaderboard view
+  const content = document.getElementById('lbContent');
+  if (content) {
+    const playerName = getPlayerName();
+    content.innerHTML = renderLeaderboard();
+    // Replace name entry with logged-in message
+    const card = document.querySelector('.leaderboard-card');
+    const existingMsg = card.querySelector('.name-entry-row');
+    if (existingMsg) {
+      existingMsg.innerHTML = `
+        <div style="margin-top:12px;font-size:13px;color:var(--muted);font-weight:700;">
+          Logged in as: <span style="color:var(--text)">${escHtml(playerName)}</span>
+          <button class="btn btn-ghost" onclick="changeLbName()" style="margin-left:8px;font-size:12px;padding:4px 10px;">Change</button>
+        </div>
+      `;
+    }
+  }
+}
+
+function changeLbName() {
+  const card = document.querySelector('.leaderboard-card');
+  const msgDiv = card.querySelector('[style*="margin-top:12px"]');
+  if (msgDiv) {
+    msgDiv.innerHTML = `
+      <div class="name-entry-row">
+        <input type="text" class="name-entry-input" id="lbNameInput"
+               placeholder="Enter your name..." maxlength="20"
+               onkeydown="if(event.key==='Enter')saveLbName()" />
+        <button class="btn btn-secondary" onclick="saveLbName()">Set Name</button>
+      </div>
+    `;
+    setTimeout(() => {
+      const inp = document.getElementById('lbNameInput');
+      if (inp) { inp.value = getPlayerName(); inp.focus(); }
+    }, 50);
+  }
+}
+
+function saveCurrentScoreToLB() {
+  const name = getPlayerName();
+  if (!name) {
+    alert('Please set your name first!');
+    return;
+  }
+  if (state.score === 0) {
+    alert('Play a game first to save your score!');
+    return;
+  }
+  saveScore(name, state.score);
+  const content = document.getElementById('lbContent');
+  if (content) content.innerHTML = renderLeaderboard();
+}
+
+function showQRCode() {
+  const section = document.getElementById('qrSection');
+  const qrDiv = document.getElementById('qrcode');
+  if (!section || !qrDiv) return;
+
+  if (section.style.display === 'none') {
+    section.style.display = 'block';
+    qrDiv.innerHTML = '';
+
+    // Encode leaderboard as base64 for QR
+    const entries = getLeaderboard();
+    const payload = JSON.stringify({ lb: entries, exp: Date.now() + LB_EXPIRY_DAYS * 24 * 60 * 60 * 1000 });
+    const encoded = btoa(unescape(encodeURIComponent(payload)));
+    const shareUrl = window.location.href.split('#')[0] + '#lb=' + encoded;
+
+    try {
+      new QRCode(qrDiv, {
+        text: shareUrl,
+        width: 180,
+        height: 180,
+        colorDark: '#2D3436',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.L
+      });
+    } catch(e) {
+      qrDiv.innerHTML = '<p style="font-size:12px;color:var(--muted);">QR code not available.<br>Share this URL instead:<br><input readonly value="' + shareUrl + '" style="width:100%;margin-top:8px;font-size:11px;border:1px solid #ddd;padding:4px;border-radius:4px;" onclick="this.select()" /></p>';
+    }
+  } else {
+    section.style.display = 'none';
+    qrDiv.innerHTML = '';
+  }
+}
+
+// Auto-load leaderboard from QR code on page load
+function loadFromLBQR() {
+  const hash = window.location.hash;
+  if (!hash || !hash.startsWith('#lb=')) return;
+  try {
+    const encoded = hash.slice(4);
+    const payload = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+    if (!payload.lb || !Array.isArray(payload.lb)) return;
+    if (payload.exp && payload.exp < Date.now()) return; // expired QR
+
+    // Merge with existing leaderboard (keep highest score per name)
+    const existing = getLeaderboard();
+    const merged = [...existing];
+    payload.lb.forEach(newEntry => {
+      const idx = merged.findIndex(e => e.name.toLowerCase() === newEntry.name.toLowerCase());
+      if (idx >= 0) {
+        if (merged[idx].score < newEntry.score) merged[idx] = newEntry;
+      } else {
+        merged.push(newEntry);
+      }
+    });
+    saveLeaderboard(merged.sort((a, b) => b.score - a.score));
+  } catch(e) {}
+}
+
+function promptNameAndSaveScore(score) {
+  // Called from results screen
+  const name = getPlayerName();
+  if (!name) {
+    const existing = document.querySelector('.name-entry-row');
+    if (!existing) {
+      const scoreEl = document.querySelector('.results-score');
+      if (scoreEl) {
+        const row = document.createElement('div');
+        row.className = 'name-entry-row';
+        row.innerHTML = `
+          <input type="text" class="name-entry-input" id="quickNameInput"
+                 placeholder="Enter your name to save score..." maxlength="20"
+                 onkeydown="if(event.key==='Enter'){
+                   setPlayerName(document.getElementById('quickNameInput').value);
+                   saveScore(document.getElementById('quickNameInput').value, ${score});
+                   document.querySelector('.name-entry-row').innerHTML='<span style=\'color:var(--success);font-weight:700\'>✅ Score saved!</span>';
+                 }" />
+          <button class="btn btn-primary" onclick="{
+            setPlayerName(document.getElementById('quickNameInput').value);
+            saveScore(document.getElementById('quickNameInput').value, ${score});
+            document.querySelector('.name-entry-row').innerHTML='<span style=\'color:var(--success);font-weight:700\'>✅ Score saved!</span>';
+          }">Save Score 🏆</button>
+        `;
+        scoreEl.after(row);
+        setTimeout(() => { const inp = document.getElementById('quickNameInput'); if (inp) inp.focus(); }, 100);
+      }
+    }
+  } else {
+    saveScore(name, score);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════ */
 (function init() {
+  // Check for leaderboard QR code first
+  loadFromLBQR();
+
   // Check for share link FIRST — before loading localStorage
   const linkData = loadFromShareLink();
 
@@ -2522,10 +2981,11 @@ function closeExpiredOverlay() {
     } else {
       // Pre-load words from URL
       state.words = linkData.words;
+      state.isSharedLink = true;
       saveWords();
       // Auto-switch to student mode
       state.mode = 'student';
-      document.getElementById('modeToggle').classList.add('teacher');
+      document.getElementById('modeToggle').style.display = 'none';  // hide teacher toggle
       document.getElementById('setupPanel').style.display = 'none';
       document.getElementById('gameSection').style.display = 'block';
 
