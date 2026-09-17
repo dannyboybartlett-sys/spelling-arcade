@@ -9,7 +9,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Orbitron:wght@700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <style>
     /* ─── Reset & Base ─────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -115,85 +115,219 @@
     .trophy-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 0 #d4a84a; }
     .trophy-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 #d4a84a; }
 
-    /* ─── Leaderboard Overlay ─────────────────────────────── */
+    /* ─── Leaderboard Overlay (Pinball Style) ───────────── */
     .leaderboard-overlay {
       position: fixed; inset: 0;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(4px);
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(6px);
       display: flex; align-items: center; justify-content: center;
       z-index: 9000;
       padding: 16px;
     }
+
     .leaderboard-card {
-      background: var(--surface);
-      border-radius: var(--radius);
-      padding: 28px 24px;
+      background: #0c0c14;
+      border-radius: 20px;
+      padding: 0;
       width: 100%;
-      max-width: 480px;
+      max-width: 520px;
       max-height: 85vh;
-      overflow-y: auto;
-      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      box-shadow:
+        0 0 0 3px #FF2D55,
+        0 0 30px rgba(255,45,85,0.5),
+        0 0 80px rgba(255,45,85,0.2),
+        inset 0 0 60px rgba(0,0,0,0.8);
       animation: fadeInUp 0.35s ease;
+      position: relative;
     }
+
+    /* Top neon bar like a pinball machine */
+    .leaderboard-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, #FF2D55, #FF9500, #FFD60A, #30D158, #00C7BE, #0A84FF, #5E5CE6, #FF2D55);
+      background-size: 200% 100%;
+      animation: neonScroll 3s linear infinite;
+    }
+
+    @keyframes neonScroll {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 200% 50%; }
+    }
+
+    .lb-inner {
+      padding: 28px 24px 20px;
+      overflow-y: auto;
+      max-height: 85vh;
+    }
+    .lb-inner::-webkit-scrollbar { width: 6px; }
+    .lb-inner::-webkit-scrollbar-track { background: #111; }
+    .lb-inner::-webkit-scrollbar-thumb { background: #FF2D55; border-radius: 3px; }
+
     .leaderboard-header {
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 20px;
     }
+
     .leaderboard-header h2 {
-      font-size: 22px; color: var(--primary);
-      display: flex; align-items: center; gap: 8px;
+      font-family: 'Orbitron', monospace;
+      font-size: 22px;
+      font-weight: 900;
+      color: #FF2D55;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      display: flex; align-items: center; gap: 10px;
+      text-shadow:
+        0 0 5px #FF2D55,
+        0 0 10px #FF2D55,
+        0 0 20px #FF2D55,
+        0 0 40px #FF2D55;
+      animation: flicker 4s infinite;
     }
+
+    @keyframes flicker {
+      0%, 95%, 100% { opacity: 1; }
+      96% { opacity: 0.8; }
+      97% { opacity: 1; }
+      98% { opacity: 0.6; }
+      99% { opacity: 1; }
+    }
+
     .close-btn {
-      width: 36px; height: 36px;
-      border: 2px solid #e0e0e0;
+      width: 38px; height: 38px;
+      border: 2px solid #FF2D55;
       border-radius: 50%;
-      background: white;
+      background: transparent;
       cursor: pointer;
       font-size: 18px;
       display: flex; align-items: center; justify-content: center;
       transition: all 0.2s;
-      color: var(--muted);
+      color: #FF2D55;
+      text-shadow: 0 0 8px #FF2D55;
     }
-    .close-btn:hover { border-color: var(--danger); color: var(--danger); }
+    .close-btn:hover {
+      background: #FF2D55;
+      color: #0c0c14;
+      box-shadow: 0 0 16px #FF2D55;
+    }
+
+    /* Column headers */
+    .lb-col-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 6px 12px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid rgba(255,45,85,0.2);
+    }
+    .lb-col-header span {
+      font-family: 'Orbitron', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      color: #FF9500;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      text-shadow: 0 0 8px rgba(255,149,0,0.6);
+    }
+    .lb-col-header .ch-rank { width: 36px; text-align: center; }
+    .lb-col-header .ch-score { margin-left: auto; }
 
     .lb-entry {
       display: flex; align-items: center; gap: 12px;
-      padding: 10px 14px;
-      border-radius: var(--radius-sm);
-      margin-bottom: 8px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      transition: all 0.2s;
       animation: fadeInUp 0.25s ease;
     }
-    .lb-entry:nth-child(odd) { background: #f8f8f8; }
+
+    .lb-entry:hover {
+      background: rgba(255,45,85,0.1);
+      border-color: rgba(255,45,85,0.3);
+    }
+
+    .lb-entry.is-you {
+      background: rgba(255,45,85,0.15);
+      border: 1px solid rgba(255,45,85,0.5);
+      box-shadow: 0 0 12px rgba(255,45,85,0.2);
+    }
+
     .lb-rank {
-      font-family: 'Fredoka One', cursive;
-      font-size: 18px;
-      width: 30px; text-align: center;
-      color: var(--muted);
+      font-family: 'Orbitron', monospace;
+      font-size: 16px;
+      font-weight: 900;
+      width: 36px; text-align: center;
+      color: rgba(255,255,255,0.3);
     }
-    .lb-rank.gold { color: #FFD700; }
-    .lb-rank.silver { color: #C0C0C0; }
-    .lb-rank.bronze { color: #CD7F32; }
+
+    .lb-rank.gold {
+      color: #FFD60A;
+      text-shadow: 0 0 8px #FFD60A, 0 0 16px #FFD60A;
+    }
+    .lb-rank.silver {
+      color: #C0C0C0;
+      text-shadow: 0 0 8px #C0C0C0;
+    }
+    .lb-rank.bronze {
+      color: #CD7F32;
+      text-shadow: 0 0 8px #CD7F32;
+    }
+
     .lb-name {
-      flex: 1; font-weight: 700; font-size: 15px;
-      color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      flex: 1; font-family: 'Nunito', sans-serif;
+      font-size: 14px; font-weight: 800;
+      color: #FFD60A;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      text-shadow: 0 0 8px rgba(255,214,10,0.4);
     }
+
     .lb-score {
-      font-family: 'Fredoka One', cursive;
+      font-family: 'Orbitron', monospace;
       font-size: 18px;
-      color: var(--secondary);
+      font-weight: 900;
+      color: #FF2D55;
+      white-space: nowrap;
+      text-shadow:
+        0 0 5px #FF2D55,
+        0 0 10px #FF2D55,
+        0 0 20px rgba(255,45,85,0.5);
+      letter-spacing: 1px;
     }
+
     .lb-date {
-      font-size: 11px; color: var(--muted); margin-left: 4px;
+      font-size: 10px; color: rgba(255,255,255,0.25);
+      margin-left: 6px; font-family: 'Orbitron', monospace;
     }
+
     .lb-empty {
-      text-align: center; padding: 32px 16px; color: var(--muted);
-      font-size: 15px;
+      text-align: center; padding: 40px 16px;
     }
-    .lb-empty-icon { font-size: 40px; margin-bottom: 8px; display: block; }
+    .lb-empty-icon {
+      font-size: 56px; margin-bottom: 12px; display: block;
+      animation: float 2s ease-in-out infinite;
+    }
+    .lb-empty p {
+      font-family: 'Orbitron', monospace;
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      line-height: 1.8;
+    }
 
     .lb-actions {
       display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px;
-      border-top: 1px solid #eee; padding-top: 16px;
+      border-top: 1px solid rgba(255,45,85,0.2);
+      padding-top: 16px;
+    }
+
+    .lb-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,45,85,0.4), transparent);
+      margin: 16px 0;
     }
 
     /* Name entry on results */
@@ -202,28 +336,42 @@
     }
     .name-entry-input {
       flex: 1; min-width: 120px;
-      padding: 9px 14px;
-      border: 2px solid #e0e0e0;
-      border-radius: var(--radius-sm);
-      font-family: 'Nunito', sans-serif;
-      font-size: 14px; font-weight: 600;
+      padding: 10px 14px;
+      border: 2px solid rgba(255,45,85,0.4);
+      border-radius: 8px;
+      font-family: 'Orbitron', monospace;
+      font-size: 12px; font-weight: 700;
       outline: none;
+      background: #1a1a2e;
+      color: #FFD60A;
+      letter-spacing: 1px;
+      text-transform: uppercase;
     }
-    .name-entry-input:focus { border-color: var(--secondary); }
+    .name-entry-input::placeholder { color: rgba(255,214,10,0.3); }
+    .name-entry-input:focus { border-color: #FF2D55; box-shadow: 0 0 12px rgba(255,45,85,0.3); }
 
     .qr-section {
       margin-top: 16px;
-      background: #f0f7ff;
-      border: 2px dashed rgba(0,180,216,0.3);
+      background: rgba(255,255,255,0.03);
+      border: 2px dashed rgba(255,45,85,0.3);
       border-radius: var(--radius-sm);
       padding: 16px;
       text-align: center;
     }
-    .qr-section h4 { font-size: 14px; color: var(--secondary); margin-bottom: 8px; }
-    .qr-section p { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+    .qr-section h4 {
+      font-family: 'Orbitron', monospace;
+      font-size: 11px; color: #0A84FF; margin-bottom: 8px;
+      text-transform: uppercase; letter-spacing: 2px;
+      text-shadow: 0 0 8px rgba(10,132,255,0.5);
+    }
+    .qr-section p { font-size: 11px; color: rgba(255,255,255,0.35); margin-bottom: 12px; font-family: 'Orbitron', monospace; }
     #qrcode { display: flex; justify-content: center; margin-bottom: 10px; }
     #qrcode canvas, #qrcode img { border-radius: 8px; }
-    .lb-hint { font-size: 12px; color: var(--muted); margin-top: 8px; text-align: center; }
+    .lb-hint {
+      font-family: 'Orbitron', monospace;
+      font-size: 10px; color: rgba(255,255,255,0.25);
+      margin-top: 8px; text-align: center; letter-spacing: 1px;
+    }
 
     @keyframes scorePulse {
       0%   { transform: scale(1); }
@@ -2744,15 +2892,15 @@ function renderLeaderboard() {
   }
 
   return entries.slice(0, 50).map((e, i) => {
-    const isYou = e.name.toLowerCase() === playerName.toLowerCase();
+    const isYou = playerName && e.name.toLowerCase() === playerName.toLowerCase();
     const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
     const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
     const dateStr = new Date(e.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     return `
-      <div class="lb-entry" style="${isYou ? 'background:#fff5e6;border:2px solid var(--accent);' : ''}">
+      <div class="lb-entry${isYou ? ' is-you' : ''}">
         <span class="lb-rank ${rankClass}">${medal || (i + 1)}</span>
-        <span class="lb-name">${escHtml(e.name)}${isYou ? ' (you)' : ''}</span>
-        <span class="lb-score">${e.score}<span class="lb-date">pts · ${dateStr}</span></span>
+        <span class="lb-name">${escHtml(e.name.toUpperCase())}${isYou ? '' : ''}</span>
+        <span class="lb-score">${e.score.toString().padStart(6,'0')}<span class="lb-date"> ${dateStr}</span></span>
       </div>
     `;
   }).join('');
@@ -2771,39 +2919,48 @@ function openLeaderboard() {
 
   overlay.innerHTML = `
     <div class="leaderboard-card">
-      <div class="leaderboard-header">
-        <h2>🏆 Scoreboard</h2>
-        <button class="close-btn" onclick="closeLeaderboard()">✕</button>
-      </div>
-      <div id="lbContent">${renderLeaderboard()}</div>
-      ${!playerName ? `
-        <div class="name-entry-row">
-          <input type="text" class="name-entry-input" id="lbNameInput"
-                 placeholder="Enter your name..." maxlength="20"
-                 onkeydown="if(event.key==='Enter')saveLbName()" />
-          <button class="btn btn-secondary" onclick="saveLbName()">Set Name</button>
+      <div class="lb-inner">
+        <div class="leaderboard-header">
+          <h2>🏆 HIGH SCORES</h2>
+          <button class="close-btn" onclick="closeLeaderboard()">✕</button>
         </div>
-      ` : `
-        <div style="margin-top:12px;font-size:13px;color:var(--muted);font-weight:700;">
-          Logged in as: <span style="color:var(--text)">${escHtml(playerName)}</span>
-          <button class="btn btn-ghost" onclick="changeLbName()" style="margin-left:8px;font-size:12px;padding:4px 10px;">Change</button>
+        <div class="lb-col-header">
+          <span class="ch-rank">#</span>
+          <span>PLAYER</span>
+          <span class="ch-score">SCORE</span>
         </div>
-      `}
-
-      <div class="lb-actions">
-        <button class="btn btn-primary" onclick="saveCurrentScoreToLB()">
-          💾 Save Current Score (${state.score} pts)
-        </button>
-        <button class="btn btn-secondary" onclick="showQRCode()">
-          📱 Share QR Code
-        </button>
-      </div>
-
-      <div class="qr-section" id="qrSection" style="display:none">
-        <h4>📱 Scan to import scores</h4>
-        <p>Students scan this QR code with their phone to get the latest scores!</p>
-        <div id="qrcode"></div>
-        <p class="lb-hint">Scores auto-expire after 7 days</p>
+        <div id="lbContent">${renderLeaderboard()}</div>
+        <div class="lb-divider"></div>
+        ${!playerName ? `
+          <div class="name-entry-row">
+            <input type="text" class="name-entry-input" id="lbNameInput"
+                   placeholder="ENTER YOUR NAME..." maxlength="20"
+                   style="background:#1a1a2e;color:#FFD60A;border-color:#FF2D55;font-family:'Orbitron',monospace;font-size:12px;letter-spacing:1px;text-transform:uppercase;"
+                   onkeydown="if(event.key==='Enter')saveLbName()" />
+            <button class="btn btn-primary" onclick="saveLbName()" style="background:#FF2D55;box-shadow:0 3px 0 #cc0033;">SET NAME</button>
+          </div>
+        ` : `
+          <div style="margin-top:12px;text-align:center;">
+            <span style="font-family:'Orbitron',monospace;font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase;">
+              PLAYER: <span style="color:#FFD60A;text-shadow:0 0 8px rgba(255,214,10,0.6);">${escHtml(playerName.toUpperCase())}</span>
+            </span>
+            <button class="btn btn-ghost" onclick="changeLbName()" style="margin-left:10px;font-size:11px;padding:4px 10px;color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.2);">CHANGE</button>
+          </div>
+        `}
+        <div class="lb-actions">
+          <button class="btn btn-primary" onclick="saveCurrentScoreToLB()" style="background:#FF2D55;box-shadow:0 3px 0 #cc0033;">
+            💾 SAVE (${state.score} PTS)
+          </button>
+          <button class="btn btn-secondary" onclick="showQRCode()" style="background:#5E5CE6;box-shadow:0 3px 0 #3a3a9e;color:white;border:none;">
+            📱 QR CODE
+          </button>
+        </div>
+        <div class="qr-section" id="qrSection" style="display:none">
+          <h4>📱 SCAN TO IMPORT SCORES</h4>
+          <p>Students scan this QR code to get the latest scores!</p>
+          <div id="qrcode"></div>
+          <p class="lb-hint">Scores auto-expire after 7 days</p>
+        </div>
       </div>
     </div>
   `;
