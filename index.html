@@ -795,6 +795,73 @@
     .blank-letter:hover { background: #eaf8ff; }
     .blank-letter.filled { background: #eaf8ff; color: var(--text); }
     .blank-letter.correct { border-color: var(--success); background: #e8fff7; color: var(--success); }
+    /* Fill in the Blank — new text-input blanks */
+    .blank-word {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      justify-content: center; align-items: center;
+      padding: 16px 8px; background: var(--surface);
+      border-radius: 16px; box-shadow: var(--shadow);
+      margin-bottom: 12px;
+    }
+    .blank-input {
+      width: 42px; height: 52px;
+      text-align: center; font-size: 26px; font-weight: 800;
+      font-family: 'Fredoka One', cursive;
+      border: 3px solid #ddd; border-radius: 10px;
+      background: #f8fdff; color: var(--primary);
+      outline: none; caret-color: transparent;
+      transition: border-color 0.15s, background 0.15s;
+      cursor: text;
+    }
+    .blank-input:focus {
+      border-color: var(--secondary); background: #f0faff;
+    }
+    .blank-input.filled {
+      border-color: var(--secondary); background: #eaf8ff;
+    }
+    .blank-input.blank-focused {
+      border-color: var(--secondary); background: #e0f4ff;
+      box-shadow: 0 0 0 3px rgba(0,180,216,0.2);
+    }
+    .blank-input.correct {
+      border-color: var(--success); background: #e8fff7; color: var(--success);
+    }
+    .blank-input.wrong {
+      border-color: var(--danger); background: #fff0f3; color: var(--danger);
+      animation: shake 0.4s ease;
+    }
+    .blank-static {
+      font-size: 26px; font-weight: 800;
+      font-family: 'Fredoka One', cursive;
+      color: var(--text); line-height: 1;
+    }
+
+    /* On-screen keyboard */
+    .on-screen-keyboard {
+      display: flex; flex-direction: column; gap: 6px;
+      padding: 10px 6px; background: #f0f0f5;
+      border-radius: 16px;
+    }
+    .osk-row {
+      display: flex; justify-content: center; gap: 5px;
+    }
+    .osk-key {
+      min-width: 30px; height: 46px;
+      background: white; border: 2px solid #ccc;
+      border-bottom-width: 4px; border-radius: 8px;
+      font-size: 17px; font-weight: 800;
+      font-family: 'Fredoka One', cursive;
+      color: var(--text);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; user-select: none;
+      transition: all 0.1s;
+    }
+    .osk-key:hover { background: #fff0e8; border-color: var(--primary); transform: translateY(-2px); }
+    .osk-key:active { transform: translateY(1px); border-bottom-width: 2px; }
+    .osk-key.osk-wide { min-width: 80px; font-size: 14px; background: #f8f8ff; }
+    .osk-key.osk-wide:hover { border-color: var(--secondary); background: #f0faff; }
+
+    /* Old blank-letter still used elsewhere — keep minimal */
     .blank-letter.wrong { border-color: var(--danger); background: #fff0f3; color: var(--danger); animation: shake 0.4s ease; }
     .blank-letter.selected-blank { border-color: var(--secondary); background: #d0f4ff; animation: pulse 0.6s ease infinite alternate; }
 
@@ -2123,29 +2190,32 @@ function loadGame2() {
 function renderGame2(word) {
   const { fillLetters, fillBlanks, fillUserAnswer } = state;
 
+  // Build word with blank inputs — click blank to focus it
   const wordHtml = fillLetters.map((l, i) => {
     const isBlank = fillBlanks.includes(i);
     const filled = fillUserAnswer[i];
-    return `<div class="blank-letter ${filled ? 'filled' : ''}" id="blank_${i}"
-                 onclick="blankClick(${i})" data-blank="${isBlank}">
-              ${filled || (isBlank ? '_' : l)}
-            </div>`;
+    if (isBlank) {
+      return `<input class="blank-input" id="blank_${i}"
+               maxlength="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+               value="${filled || ''}"
+               placeholder="_"
+               data-blank="${i}"
+               onclick="blankClick(${i})"
+               onkeydown="blankKeydown(event, ${i})"
+               oninput="blankInput(event, ${i})"
+               onfocus="blankFocus(${i})" />`;
+    } else {
+      return `<span class="blank-static">${l}</span>`;
+    }
   }).join('');
 
-  // Full QWERTY keyboard — show count badge when letter appears more than once in word
-  const keyboardHtml = QWERTY.map((row, rowIdx) => {
-    const keys = row.split('').map(letter => {
-      const total = state.fillLetterCount[letter] || 0;
-      const placed = state.fillKeyAssignedTo[letter] || 0;
-      const available = total - placed;
-      const isUsed = available <= 0;
-      const badge = total > 1 ? `<span class="key-count">${available}</span>` : '';
-      return `<div class="qwerty-key ${isUsed ? 'used' : ''}"
-                   id="qkey_${letter}"
-                   onclick="qkeyClick('${letter}')">${letter}${badge}</div>`;
-    }).join('');
-    const marginLeft = rowIdx === 1 ? 14 : rowIdx === 2 ? 28 : 0;
-    return `<div class="qwerty-row" style="margin-left:${marginLeft}px">${keys}</div>`;
+  // Simple A-Z on-screen keyboard — letters never disappear
+  const rows = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+  const keyboardHtml = rows.map(row => {
+    const keys = row.split('').map(letter =>
+      `<div class="osk-key" onclick="oskClick('${letter}')">${letter}</div>`
+    ).join('');
+    return `<div class="osk-row">${keys}</div>`;
   }).join('');
 
   const content = `
@@ -2158,126 +2228,144 @@ function renderGame2(word) {
 
       <div class="blank-word" id="blankWord">${wordHtml}</div>
 
-      <div style="font-size:13px;color:var(--muted);font-weight:700;margin-bottom:12px;">
-        Tap a letter on the keyboard, then tap the blank to type it in.
+      <div style="font-size:13px;color:var(--muted);font-weight:700;margin-bottom:14px;text-align:center;">
+        Tap a blank, then type on your keyboard or tap the letters below
       </div>
 
-      <div class="qwerty-keyboard" id="fillBank">${keyboardHtml}</div>
+      <div class="on-screen-keyboard" id="onScreenKB">
+        ${keyboardHtml}
+        <div class="osk-row">
+          <div class="osk-key osk-wide" onclick="oskBackspace()">⌫ Backspace</div>
+          <div class="osk-key osk-wide" onclick="checkFill()">✓ Check</div>
+        </div>
+      </div>
 
       <div class="feedback-msg" id="feedbackMsg" style="min-height:44px;margin-top:12px"></div>
-
-      <div class="game-actions" id="gameActions">
-        <button class="btn btn-primary" onclick="checkFill()">Check Answer ✓</button>
-        <button class="btn btn-ghost" onclick="resetFill()">Reset 🔄</button>
-      </div>
     </div>
   `;
   document.getElementById('gameContent').innerHTML = content;
+
+  // Focus first empty blank
+  const firstBlank = state.fillBlanks.find(i => state.fillUserAnswer[i] === null);
+  if (firstBlank !== undefined) {
+    setTimeout(() => {
+      const el = document.getElementById('blank_' + firstBlank);
+      if (el) el.focus();
+    }, 80);
+  }
 }
 
 function setFillLevel(lvl) {
   fillLevel = lvl;
   loadGame2();
 }
+function oskClick(letter) {
+  const blank = getActiveBlank();
+  if (blank === null) return;
+  placeLetter(blank, letter);
+}
 
-function qkeyClick(letter) {
-  // If all copies of this letter are already placed, do nothing
-  const total = state.fillLetterCount[letter] || 0;
-  const placed = state.fillKeyAssignedTo[letter] || 0;
-  if (placed >= total) return;
+function oskBackspace() {
+  const blank = getActiveBlank();
+  if (blank === null) return;
+  if (state.fillUserAnswer[blank] !== null) {
+    state.fillUserAnswer[blank] = null;
+    const el = document.getElementById('blank_' + blank);
+    if (el) { el.value = ''; el.focus(); }
+  } else {
+    const idx = state.fillBlanks.indexOf(blank);
+    if (idx > 0) {
+      const prev = state.fillBlanks[idx - 1];
+      state.fillUserAnswer[prev] = null;
+      const el = document.getElementById('blank_' + prev);
+      if (el) { el.value = ''; el.focus(); }
+      state.fillSelectedBlank = prev;
+    }
+  }
+}
 
-  // Clear selections
-  document.querySelectorAll('.qwerty-key.selected').forEach(e => e.classList.remove('selected'));
-  document.querySelectorAll('.blank-letter.selected-blank').forEach(e => e.classList.remove('selected-blank'));
+function blankKeydown(e, blankIndex) {
+  const key = e.key;
+  if (key === 'Backspace') { e.preventDefault(); oskBackspace(); return; }
+  if (key === 'ArrowRight') { e.preventDefault(); advanceBlank(blankIndex, 1); return; }
+  if (key === 'ArrowLeft') { e.preventDefault(); advanceBlank(blankIndex, -1); return; }
+  if (key === 'Enter') {
+    e.preventDefault();
+    const allFilled = state.fillBlanks.every(i => state.fillUserAnswer[i] !== null);
+    if (allFilled) { checkFill(); return; }
+    advanceBlank(blankIndex, 1); return;
+  }
+  if (/^[a-zA-Z]$/.test(key)) { e.preventDefault(); placeLetter(blankIndex, key.toLowerCase()); }
+}
 
-  // Find target blank: explicitly selected first, else first empty blank
-  const targetBlank = state.fillSelectedBlank !== null && state.fillUserAnswer[state.fillSelectedBlank] === null
-    ? state.fillSelectedBlank
-    : state.fillBlanks.find(i => state.fillUserAnswer[i] === null);
-  if (targetBlank === undefined) return;
+function blankInput(e, blankIndex) {
+  const val = e.target.value.toLowerCase();
+  if (!val) return;
+  placeLetter(blankIndex, val[val.length - 1]);
+}
 
-  // Place the letter
-  state.fillUserAnswer[targetBlank] = letter;
-  state.fillKeyAssignedTo[letter] = (state.fillKeyAssignedTo[letter] || 0) + 1;
-  state.fillBlankAssignedKey[targetBlank] = letter;
-
-  const el = document.getElementById('blank_' + targetBlank);
-  if (el) { el.textContent = letter; el.classList.add('filled'); }
-
-  renderFillKeyboard();
-  state.fillSelectedKey = null;
-  state.fillSelectedBlank = null;
-
-  // Auto-check when all blanks are filled
-  const allFilled = state.fillBlanks.every(i => state.fillUserAnswer[i] !== null);
-  if (allFilled) setTimeout(() => checkFill(), 150);
+function blankFocus(blankIndex) {
+  state.fillSelectedBlank = blankIndex;
+  document.querySelectorAll('.blank-input').forEach(el => el.classList.remove('blank-focused'));
+  const el = document.getElementById('blank_' + blankIndex);
+  if (el) el.classList.add('blank-focused');
 }
 
 function blankClick(blankIndex) {
-  if (!state.fillBlanks.includes(blankIndex)) return;
+  blankFocus(blankIndex);
+  const el = document.getElementById('blank_' + blankIndex);
+  if (el) el.focus();
+}
 
-  // Clear previous selections
-  document.querySelectorAll('.blank-letter.selected-blank').forEach(e => e.classList.remove('selected-blank'));
-  document.querySelectorAll('.qwerty-key.selected').forEach(e => e.classList.remove('selected'));
-
-  if (state.fillUserAnswer[blankIndex] !== null) {
-    // Filled blank — return letter to keyboard
-    const letter = state.fillBlankAssignedKey[blankIndex];
-    if (letter !== undefined) {
-      state.fillKeyAssignedTo[letter] = (state.fillKeyAssignedTo[letter] || 1) - 1;
-      if (state.fillKeyAssignedTo[letter] <= 0) delete state.fillKeyAssignedTo[letter];
-      delete state.fillBlankAssignedKey[blankIndex];
-      renderFillKeyboard();
-    }
-    state.fillUserAnswer[blankIndex] = null;
-    state.fillSelectedBlank = null;
-    const el = document.getElementById('blank_' + blankIndex);
-    el.textContent = '_';
-    el.classList.remove('filled');
-    return;
+function getActiveBlank() {
+  const focused = document.activeElement;
+  if (focused && focused.classList && focused.classList.contains('blank-input')) {
+    return parseInt(focused.dataset.blank);
   }
+  return state.fillSelectedBlank !== null ? state.fillSelectedBlank
+    : state.fillBlanks.find(i => state.fillUserAnswer[i] === null) ?? state.fillBlanks[0];
+}
 
-  // Empty blank — highlight it, then next key tap fills it
+function placeLetter(blankIndex, letter) {
+  state.fillUserAnswer[blankIndex] = letter;
   state.fillSelectedBlank = blankIndex;
-  state.fillSelectedKey = null;
-  document.getElementById('blank_' + blankIndex).classList.add('selected-blank');
+  const el = document.getElementById('blank_' + blankIndex);
+  if (el) { el.value = letter; el.classList.add('filled'); }
+
+  const nextBlank = state.fillBlanks.find(i => i > blankIndex && state.fillUserAnswer[i] === null);
+  if (nextBlank !== undefined) {
+    const nextEl = document.getElementById('blank_' + nextBlank);
+    if (nextEl) nextEl.focus();
+    state.fillSelectedBlank = nextBlank;
+  } else {
+    const allFilled = state.fillBlanks.every(i => state.fillUserAnswer[i] !== null);
+    if (allFilled) { setTimeout(() => checkFill(), 150); el && el.blur(); }
+  }
+}
+
+function advanceBlank(current, direction) {
+  const blanks = state.fillBlanks;
+  const idx = blanks.indexOf(current);
+  const next = blanks[idx + direction];
+  if (next !== undefined) {
+    const el = document.getElementById('blank_' + next);
+    if (el) el.focus();
+    state.fillSelectedBlank = next;
+  }
 }
 
 function resetFill() {
   state.fillUserAnswer = new Array(state.fillLetters.length).fill(null);
-  state.fillSelectedKey = null;
+  state.fillSelectedBlank = null;
   state.fillKeyAssignedTo = {};
   state.fillBlankAssignedKey = {};
-  document.querySelectorAll('.blank-letter').forEach((el, i) => {
-    el.textContent = state.fillBlanks.includes(i) ? '_' : state.fillLetters[i];
-    el.classList.remove('filled', 'correct', 'wrong');
+  document.querySelectorAll('.blank-input').forEach(el => {
+    el.value = '';
+    el.classList.remove('filled', 'correct', 'wrong', 'blank-focused');
   });
-  renderFillKeyboard();
-  document.querySelectorAll('.qwerty-key').forEach(e => e.classList.remove('selected'));
   document.getElementById('feedbackMsg').innerHTML = '';
-  const actions = document.getElementById('gameActions');
-  if (actions) actions.innerHTML = `
-    <button class="btn btn-primary" onclick="checkFill()">Check Answer ✓</button>
-    <button class="btn btn-ghost" onclick="resetFill()">Reset 🔄</button>
-  `;
-}
-
-function renderFillKeyboard() {
-  const keyboardHtml = QWERTY.map((row, rowIdx) => {
-    const keys = row.split('').map(letter => {
-      const total = state.fillLetterCount[letter] || 0;
-      const placed = state.fillKeyAssignedTo[letter] || 0;
-      const available = total - placed;
-      const isUsed = available <= 0;
-      const badge = total > 1 ? `<span class="key-count">${available}</span>` : '';
-      return `<div class="qwerty-key ${isUsed ? 'used' : ''}"
-                   id="qkey_${letter}"
-                   onclick="qkeyClick('${letter}')">${letter}${badge}</div>`;
-    }).join('');
-    const marginLeft = rowIdx === 1 ? 14 : rowIdx === 2 ? 28 : 0;
-    return `<div class="qwerty-row" style="margin-left:${marginLeft}px">${keys}</div>`;
-  }).join('');
-  document.getElementById('fillBank').innerHTML = keyboardHtml;
+  // Re-render the word area to restore underscores
+  renderGame2(state.words[state.wordIndex]);
 }
 
 function checkFill() {
