@@ -1944,9 +1944,10 @@ function renderGame1(word) {
       </div>
 
       <div class="feedback-msg" id="feedbackMsg" style="min-height:44px"></div>
+      <div style="font-size:12px;color:var(--muted);font-weight:700;text-align:center;margin-bottom:4px;">✓ Auto-advances when all letters are placed correctly!</div>
 
       <div class="game-actions" id="gameActions">
-        <button class="btn btn-primary" onclick="checkJumble()">Check Answer ✓</button>
+        <button class="btn btn-ghost" onclick="checkJumble()">Check Answer ✓</button>
         <button class="btn btn-ghost" onclick="resetJumble()">Reset 🔄</button>
       </div>
 
@@ -1972,6 +1973,11 @@ function jumbleTileClick(tileIndex) {
   const slot = document.getElementById('slot_' + emptySlotIndex);
   slot.textContent = state.jumbleLetters[tileIndex];
   slot.classList.add('filled');
+
+  // Auto-check when all slots are filled
+  if (!state.jumbleUserAnswer.includes(null)) {
+    setTimeout(() => checkJumble(), 150);
+  }
 }
 
 function jumbleSlotClick(slotIndex) {
@@ -2006,7 +2012,7 @@ function resetJumble() {
   document.getElementById('feedbackMsg').innerHTML = '';
   const actions = document.getElementById('gameActions');
   if (actions) actions.innerHTML = `
-    <button class="btn btn-primary" onclick="checkJumble()">Check Answer ✓</button>
+    <button class="btn btn-ghost" onclick="checkJumble()">Check Answer ✓</button>
     <button class="btn btn-ghost" onclick="resetJumble()">Reset 🔄</button>
   `;
 }
