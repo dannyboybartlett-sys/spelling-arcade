@@ -1260,6 +1260,23 @@
 
     .share-success.show { display: block; animation: fadeInUp 0.3s ease; }
 
+    .share-qr-wrap {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 16px;
+      background: white;
+      border-radius: var(--radius-sm);
+      border: 2px solid rgba(0,180,216,0.2);
+      margin-bottom: 12px;
+    }
+    .share-qr-wrap canvas, .share-qr-wrap img {
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .share-qr-hint {
+      margin-top: 8px;
+      font-size: 12px; color: var(--muted); font-weight: 700;
+    }
+
     .expired-overlay {
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.7);
@@ -1383,8 +1400,16 @@
 
     <!-- Share Link Panel -->
     <div class="share-panel" id="sharePanel" style="display:none">
-      <h3>🔗 Share with Students</h3>
-      <p>Copy this link and send it to your students. It works for <strong>7 days</strong>, then it expires automatically.</p>
+      <h3>📱 Share with Students</h3>
+      <p>Students can scan this QR code with their phone camera — no link to copy! It works for <strong>7 days</strong>, then it expires automatically.</p>
+
+      <div class="share-qr-wrap" id="shareQRRap">
+        <div id="shareQRCode"></div>
+        <p class="share-qr-hint">Scan with a phone camera</p>
+      </div>
+
+      <div style="text-align:center;margin:12px 0;font-size:13px;color:var(--muted);font-weight:700;">— or copy the link —</div>
+
       <div class="share-link-row">
         <input type="text" class="share-link-input" id="shareLinkInput" readonly
                placeholder="Generate a link after adding your words" />
@@ -2886,6 +2911,32 @@ function generateShareLink() {
   // Calculate days remaining
   const daysLeft = Math.ceil((expiryTs - Date.now()) / (24 * 60 * 60 * 1000));
   expiryTag.innerHTML = `⏰ Expires in <strong>${daysLeft} days</strong>`;
+
+  // Auto-generate QR code
+  renderShareQR(shareUrl);
+}
+
+function renderShareQR(url) {
+  const qrDiv = document.getElementById('shareQRCode');
+  if (!qrDiv) return;
+  qrDiv.innerHTML = '';
+  try {
+    if (typeof QRCode !== 'undefined') {
+      new QRCode(qrDiv, {
+        text: url,
+        width: 180,
+        height: 180,
+        colorDark: '#2D3436',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.L
+      });
+    } else {
+      // Fallback: show a text note
+      qrDiv.innerHTML = '<p style="font-size:12px;color:var(--muted);text-align:center;padding:16px;">QR code unavailable — copy the link instead</p>';
+    }
+  } catch(e) {
+    qrDiv.innerHTML = '';
+  }
 }
 
 function copyShareLink() {
