@@ -852,6 +852,12 @@
     .qwerty-key:active { transform: translateY(1px); border-bottom-width: 2px; }
     .qwerty-key.selected { background: var(--primary); color: white; border-color: var(--primary-dk); border-bottom-color: var(--primary-dk); transform: translateY(-2px); }
     .qwerty-key.used { background: #f0f0f0; color: #bbb; border-color: #ddd; border-bottom-color: #ccc; cursor: default; opacity: 0.5; pointer-events: none; transform: none; }
+    .key-count {
+      position: absolute; top: 2px; right: 3px;
+      font-size: 9px; font-weight: 900; line-height: 1;
+      color: var(--secondary);
+    }
+    .qwerty-key { position: relative; overflow: visible; }
 
     /* GAME 4: Memory Spell */
     .memory-phase-label {
@@ -2091,13 +2097,17 @@ function loadGame2() {
   const indices = shuffle([...Array(letters.length).keys()]).slice(0, totalMissing);
   const blanks = indices.sort((a, b) => a - b);
 
+  // Count how many of each letter are in the word (supports duplicate letters like 'e' in breathe)
+  const letterCount = {};
+  letters.forEach(l => { letterCount[l] = (letterCount[l] || 0) + 1; });
+
   state.fillLetters = letters;
   state.fillBlanks = blanks;
   state.fillAttempts = 0;
   state.fillUserAnswer = new Array(letters.length).fill(null);
   state.fillSelectedKey = null;         // which keyboard key is selected
-  state.fillKeyAssignedTo = {};         // letter -> blankIndex (if placed in a blank)
-  state.fillBlankAssignedKey = {};      // blankIndex -> letter (if filled)
+  state.fillLetterCount = letterCount;   // letter -> total count in this word
+  state.fillKeyAssignedTo = {};          // letter -> count already placed in blanks
 
   renderGame2(word);
 }
@@ -2114,13 +2124,17 @@ function renderGame2(word) {
             </div>`;
   }).join('');
 
-  // Full QWERTY keyboard
+  // Full QWERTY keyboard — show count badge when letter appears more than once in word
   const keyboardHtml = QWERTY.map((row, rowIdx) => {
     const keys = row.split('').map(letter => {
-      const isUsed = state.fillKeyAssignedTo[letter] !== undefined;
+      const total = state.fillLetterCount[letter] || 0;
+      const placed = state.fillKeyAssignedTo[letter] || 0;
+      const available = total - placed;
+      const isUsed = available <= 0;
+      const badge = total > 1 ? `<span class="key-count">${available}</span>` : '';
       return `<div class="qwerty-key ${isUsed ? 'used' : ''}"
                    id="qkey_${letter}"
-                   onclick="qkeyClick('${letter}')">${letter}</div>`;
+                   onclick="qkeyClick('${letter}')">${letter}${badge}</div>`;
     }).join('');
     const marginLeft = rowIdx === 1 ? 14 : rowIdx === 2 ? 28 : 0;
     return `<div class="qwerty-row" style="margin-left:${marginLeft}px">${keys}</div>`;
@@ -2159,8 +2173,10 @@ function setFillLevel(lvl) {
 }
 
 function qkeyClick(letter) {
-  // If already used in a blank, do nothing
-  if (state.fillKeyAssignedTo[letter] !== undefined) return;
+  // If all copies of this letter are already placed, do nothing
+  const total = state.fillLetterCount[letter] || 0;
+  const placed = state.fillKeyAssignedTo[letter] || 0;
+  if (placed >= total) return;
 
   // Deselect previous
   document.querySelectorAll('.qwerty-key.selected').forEach(e => e.classList.remove('selected'));
@@ -2177,10 +2193,12 @@ function blankClick(blankIndex) {
     // Blank already filled — return letter to keyboard
     const letter = state.fillBlankAssignedKey[blankIndex];
     if (letter !== undefined) {
-      delete state.fillKeyAssignedTo[letter];
+      // Decrement placed count
+      state.fillKeyAssignedTo[letter] = (state.fillKeyAssignedTo[letter] || 1) - 1;
+      if (state.fillKeyAssignedTo[letter] <= 0) delete state.fillKeyAssignedTo[letter];
       delete state.fillBlankAssignedKey[blankIndex];
-      const keyEl = document.getElementById('qkey_' + letter);
-      if (keyEl) keyEl.classList.remove('used');
+      // Re-render keyboard to update count badges
+      renderFillKeyboard();
     }
     state.fillUserAnswer[blankIndex] = null;
     const el = document.getElementById('blank_' + blankIndex);
@@ -2195,16 +2213,17 @@ function blankClick(blankIndex) {
   // Place the selected letter into the blank
   const letter = state.fillSelectedKey;
   state.fillUserAnswer[blankIndex] = letter;
-  state.fillKeyAssignedTo[letter] = blankIndex;
+  state.fillKeyAssignedTo[letter] = (state.fillKeyAssignedTo[letter] || 0) + 1;
   state.fillBlankAssignedKey[blankIndex] = letter;
 
   const el = document.getElementById('blank_' + blankIndex);
   el.textContent = letter;
   el.classList.add('filled');
 
-  const keyEl = document.getElementById('qkey_' + letter);
-  keyEl.classList.add('used');
-  keyEl.classList.remove('selected');
+  document.getElementById('qkey_' + letter).classList.remove('selected');
+
+  // Re-render keyboard to update count badges
+  renderFillKeyboard();
 
   state.fillSelectedKey = null;
 }
@@ -2218,13 +2237,32 @@ function resetFill() {
     el.textContent = state.fillBlanks.includes(i) ? '_' : state.fillLetters[i];
     el.classList.remove('filled', 'correct', 'wrong');
   });
-  document.querySelectorAll('.qwerty-key').forEach(e => e.classList.remove('used', 'selected'));
+  renderFillKeyboard();
+  document.querySelectorAll('.qwerty-key').forEach(e => e.classList.remove('selected'));
   document.getElementById('feedbackMsg').innerHTML = '';
   const actions = document.getElementById('gameActions');
   if (actions) actions.innerHTML = `
     <button class="btn btn-primary" onclick="checkFill()">Check Answer ✓</button>
     <button class="btn btn-ghost" onclick="resetFill()">Reset 🔄</button>
   `;
+}
+
+function renderFillKeyboard() {
+  const keyboardHtml = QWERTY.map((row, rowIdx) => {
+    const keys = row.split('').map(letter => {
+      const total = state.fillLetterCount[letter] || 0;
+      const placed = state.fillKeyAssignedTo[letter] || 0;
+      const available = total - placed;
+      const isUsed = available <= 0;
+      const badge = total > 1 ? `<span class="key-count">${available}</span>` : '';
+      return `<div class="qwerty-key ${isUsed ? 'used' : ''}"
+                   id="qkey_${letter}"
+                   onclick="qkeyClick('${letter}')">${letter}${badge}</div>`;
+    }).join('');
+    const marginLeft = rowIdx === 1 ? 14 : rowIdx === 2 ? 28 : 0;
+    return `<div class="qwerty-row" style="margin-left:${marginLeft}px">${keys}</div>`;
+  }).join('');
+  document.getElementById('fillBank').innerHTML = keyboardHtml;
 }
 
 function checkFill() {
