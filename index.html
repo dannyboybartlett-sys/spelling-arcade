@@ -585,6 +585,57 @@
       overflow: hidden;
     }
 
+    /* Game Selection Menu */
+    .game-menu {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      padding: 4px 0 8px;
+    }
+    .game-menu-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 22px 16px;
+      text-align: center;
+      cursor: pointer;
+      border: 3px solid #eee;
+      transition: all 0.2s;
+      box-shadow: var(--shadow);
+    }
+    .game-menu-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
+    .game-menu-card:active {
+      transform: translateY(0);
+    }
+    .game-menu-card .gmc-icon {
+      font-size: 44px;
+      display: block;
+      margin-bottom: 8px;
+      line-height: 1;
+    }
+    .game-menu-card .gmc-title {
+      font-family: 'Fredoka One', cursive;
+      font-size: 15px;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+    .game-menu-card .gmc-desc {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .game-menu-card.gmc-1 { border-color: #FFE0D0; }
+    .game-menu-card.gmc-1:hover { border-color: var(--primary); background: #FFF5F0; }
+    .game-menu-card.gmc-2 { border-color: #D0F0FF; }
+    .game-menu-card.gmc-2:hover { border-color: var(--secondary); background: #F0FAFF; }
+    .game-menu-card.gmc-3 { border-color: #E0FFD8; }
+    .game-menu-card.gmc-3:hover { border-color: var(--success); background: #F4FFF0; }
+    .game-menu-card.gmc-4 { border-color: #F0E8FF; }
+    .game-menu-card.gmc-4:hover { border-color: #9B59B6; background: #FAF5FF; }
+
     /* ─── Progress Bar ──────────────────────────────────────── */
     .progress-section {
       margin-bottom: 24px;
@@ -1441,14 +1492,40 @@
       </button>
     </div>
 
-    <!-- Game Card -->
-    <div class="game-card" id="gameCard">
+    <!-- Game Selection Menu -->
+    <div class="game-menu" id="gameMenu">
+      <div class="game-menu-card gmc-1" onclick="startGame(1)">
+        <span class="gmc-icon">🔤</span>
+        <div class="gmc-title">Letter Jumble</div>
+        <div class="gmc-desc">Rearrange shuffled letters into the correct order</div>
+      </div>
+      <div class="game-menu-card gmc-2" onclick="startGame(2)">
+        <span class="gmc-icon">📝</span>
+        <div class="gmc-title">Fill in Blank</div>
+        <div class="gmc-desc">Complete the word with missing letters</div>
+      </div>
+      <div class="game-menu-card gmc-3" onclick="startGame(3)">
+        <span class="gmc-icon">🔗</span>
+        <div class="gmc-title">Word Match</div>
+        <div class="gmc-desc">Match English words with their Chinese meanings</div>
+      </div>
+      <div class="game-menu-card gmc-4" onclick="startGame(4)">
+        <span class="gmc-icon">🧠</span>
+        <div class="gmc-title">Memory Spell</div>
+        <div class="gmc-desc">Memorise the word in 5 seconds, then type it</div>
+      </div>
+    </div>
 
-      <!-- Progress -->
+    <!-- Game Card -->
+    <div class="game-card" id="gameCard" style="display:none">
+
+      <!-- Progress + Back button -->
       <div class="progress-section">
-        <div class="progress-label">
-          <span id="progressText">Word 1 of 5</span>
-          <span id="progressPercent">0%</span>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <button class="btn btn-ghost" onclick="backToMenu()" style="font-size:12px;padding:5px 12px;flex-shrink:0;">← Menu</button>
+          <span id="progressText" style="font-size:13px;font-weight:700;color:var(--muted);">Word 1 of 5</span>
+          <div style="flex:1"></div>
+          <span id="progressPercent" style="font-size:13px;font-weight:700;color:var(--muted);">0%</span>
         </div>
         <div class="progress-track">
           <div class="progress-fill" id="progressFill" style="width:0%"></div>
@@ -1735,11 +1812,13 @@ function startPractice() {
   state.totalCorrect = 0;
   state.totalAttempts = 0;
   state.matchCorrect = 0;
+  state.currentTab = 0;
   updateScore(0);
   document.getElementById('setupPanel').style.display = 'none';
   document.getElementById('gameSection').style.display = 'block';
-  document.getElementById('gameCard').style.display = 'block';
-  loadGame(state.currentTab);
+  // Show menu, hide individual game card
+  document.getElementById('gameMenu').style.display = 'grid';
+  document.getElementById('gameCard').style.display = 'none';
 }
 
 function showNeedWords() {
@@ -1759,6 +1838,29 @@ function switchTab(tab) {
     t.classList.toggle('active', i + 1 === tab);
   });
   loadGame(tab);
+}
+
+function startGame(tab) {
+  state.currentTab = tab;
+  // Update tab buttons
+  document.querySelectorAll('.game-tab').forEach((t, i) => {
+    t.classList.toggle('active', i + 1 === tab);
+  });
+  // Hide menu, show game
+  document.getElementById('gameMenu').style.display = 'none';
+  document.getElementById('gameCard').style.display = 'block';
+  loadGame(tab);
+}
+
+function backToMenu() {
+  // Stop any timers
+  if (state.memoryTimer) { clearInterval(state.memoryTimer); state.memoryTimer = null; }
+  document.getElementById('gameMenu').style.display = 'grid';
+  document.getElementById('gameCard').style.display = 'none';
+  // Clear any game state
+  state.wordIndex = 0;
+  state.score = 0;
+  updateScore(0);
 }
 
 function loadGame(tab) {
@@ -1914,7 +2016,7 @@ function checkJumble() {
     playCorrectSound();
     showFeedback('success', '🎉 Correct! +100 pts');
     celebrateAnimal();
-    setTimeout(() => advanceWord(1), 1800);
+    setTimeout(() => advanceWord(1), 200);
   } else {
     state.jumbleAttempts++;
     markJumbleWrong();
@@ -2143,7 +2245,7 @@ function checkFill() {
     markFillCorrect();
     showFeedback('success', '🎉 Correct! +100 pts');
     celebrateAnimal();
-    setTimeout(() => advanceWord(2), 1800);
+    setTimeout(() => advanceWord(2), 200);
   } else {
     state.fillAttempts++;
     markFillWrong();
@@ -2451,7 +2553,7 @@ function checkMemoryAnswer(timedOut = false) {
     updateScore(100);
     showFeedback('success', `🎉 Correct! +100 pts`);
     celebrateAnimal();
-    setTimeout(() => advanceWord(4), 1800);
+    setTimeout(() => advanceWord(4), 200);
   } else {
     state.memoryAttempts++;
     if (state.memoryAttempts >= 3) {
@@ -2553,6 +2655,7 @@ function showResults() {
       <div class="results-detail">${state.totalCorrect} correct answers across all games</div>
       <div class="results-actions">
         <button class="btn btn-primary" onclick="restartPractice()">🔄 Play Again</button>
+        <button class="btn btn-secondary" onclick="backToMenu()">← Back to Menu</button>
         <button class="btn btn-secondary" onclick="backToSetup()">🏠 Home</button>
       </div>
       <div id="saveScoreSection"></div>
