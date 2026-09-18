@@ -796,6 +796,7 @@
     .blank-letter.filled { background: #eaf8ff; color: var(--text); }
     .blank-letter.correct { border-color: var(--success); background: #e8fff7; color: var(--success); }
     .blank-letter.wrong { border-color: var(--danger); background: #fff0f3; color: var(--danger); animation: shake 0.4s ease; }
+    .blank-letter.selected-blank { border-color: var(--secondary); background: #d0f4ff; animation: pulse 0.6s ease infinite alternate; }
 
     .fill-letter-bank {
       display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
@@ -2106,6 +2107,7 @@ function loadGame2() {
   state.fillAttempts = 0;
   state.fillUserAnswer = new Array(letters.length).fill(null);
   state.fillSelectedKey = null;         // which keyboard key is selected
+  state.fillSelectedBlank = null;        // which blank is visually selected
   state.fillLetterCount = letterCount;   // letter -> total count in this word
   state.fillKeyAssignedTo = {};          // letter -> count already placed in blanks
 
@@ -2178,54 +2180,61 @@ function qkeyClick(letter) {
   const placed = state.fillKeyAssignedTo[letter] || 0;
   if (placed >= total) return;
 
-  // Deselect previous
+  // Clear selections
   document.querySelectorAll('.qwerty-key.selected').forEach(e => e.classList.remove('selected'));
+  document.querySelectorAll('.blank-letter.selected-blank').forEach(e => e.classList.remove('selected-blank'));
 
-  // Select this key
-  state.fillSelectedKey = letter;
-  document.getElementById('qkey_' + letter).classList.add('selected');
+  // Find target blank: explicitly selected first, else first empty blank
+  const targetBlank = state.fillSelectedBlank !== null && state.fillUserAnswer[state.fillSelectedBlank] === null
+    ? state.fillSelectedBlank
+    : state.fillBlanks.find(i => state.fillUserAnswer[i] === null);
+  if (targetBlank === undefined) return;
+
+  // Place the letter
+  state.fillUserAnswer[targetBlank] = letter;
+  state.fillKeyAssignedTo[letter] = (state.fillKeyAssignedTo[letter] || 0) + 1;
+  state.fillBlankAssignedKey[targetBlank] = letter;
+
+  const el = document.getElementById('blank_' + targetBlank);
+  if (el) { el.textContent = letter; el.classList.add('filled'); }
+
+  renderFillKeyboard();
+  state.fillSelectedKey = null;
+  state.fillSelectedBlank = null;
+
+  // Auto-check when all blanks are filled
+  const allFilled = state.fillBlanks.every(i => state.fillUserAnswer[i] !== null);
+  if (allFilled) setTimeout(() => checkFill(), 150);
 }
 
 function blankClick(blankIndex) {
   if (!state.fillBlanks.includes(blankIndex)) return;
 
+  // Clear previous selections
+  document.querySelectorAll('.blank-letter.selected-blank').forEach(e => e.classList.remove('selected-blank'));
+  document.querySelectorAll('.qwerty-key.selected').forEach(e => e.classList.remove('selected'));
+
   if (state.fillUserAnswer[blankIndex] !== null) {
-    // Blank already filled — return letter to keyboard
+    // Filled blank — return letter to keyboard
     const letter = state.fillBlankAssignedKey[blankIndex];
     if (letter !== undefined) {
-      // Decrement placed count
       state.fillKeyAssignedTo[letter] = (state.fillKeyAssignedTo[letter] || 1) - 1;
       if (state.fillKeyAssignedTo[letter] <= 0) delete state.fillKeyAssignedTo[letter];
       delete state.fillBlankAssignedKey[blankIndex];
-      // Re-render keyboard to update count badges
       renderFillKeyboard();
     }
     state.fillUserAnswer[blankIndex] = null;
+    state.fillSelectedBlank = null;
     const el = document.getElementById('blank_' + blankIndex);
     el.textContent = '_';
     el.classList.remove('filled');
     return;
   }
 
-  // No keyboard key selected — do nothing
-  if (!state.fillSelectedKey) return;
-
-  // Place the selected letter into the blank
-  const letter = state.fillSelectedKey;
-  state.fillUserAnswer[blankIndex] = letter;
-  state.fillKeyAssignedTo[letter] = (state.fillKeyAssignedTo[letter] || 0) + 1;
-  state.fillBlankAssignedKey[blankIndex] = letter;
-
-  const el = document.getElementById('blank_' + blankIndex);
-  el.textContent = letter;
-  el.classList.add('filled');
-
-  document.getElementById('qkey_' + letter).classList.remove('selected');
-
-  // Re-render keyboard to update count badges
-  renderFillKeyboard();
-
+  // Empty blank — highlight it, then next key tap fills it
+  state.fillSelectedBlank = blankIndex;
   state.fillSelectedKey = null;
+  document.getElementById('blank_' + blankIndex).classList.add('selected-blank');
 }
 
 function resetFill() {
