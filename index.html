@@ -1439,6 +1439,113 @@
 
 <script>
 /* ═══════════════════════════════════════════════════════
+   SOUND ENGINE (Web Audio API — no external files needed)
+═══════════════════════════════════════════════════════ */
+let _audioCtx = null;
+
+function getAudioCtx() {
+  if (!_audioCtx) {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return _audioCtx;
+}
+
+// Synthesise a crunchy bug-squish: short noise burst + low thump
+function playSquishSound() {
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+
+    // Noise burst (the crunch/splat)
+    const bufSize = ctx.sampleRate * 0.12;
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) {
+      // White noise with exponential decay envelope
+      const t = i / bufSize;
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-t * 30) * 0.9;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buf;
+
+    // Bandpass filter — gives it that wet splat texture
+    const bpf = ctx.createBiquadFilter();
+    bpf.type = 'bandpass';
+    bpf.frequency.value = 600;
+    bpf.Q.value = 1.5;
+
+    // Low thump oscillator
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(80, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(20, ctx.currentTime + 0.1);
+
+    const oscGain = ctx.createGain();
+    oscGain.gain.setValueAtTime(0.6, ctx.currentTime);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+
+    // Noise gain
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(1.0, ctx.currentTime);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+
+    noise.connect(bpf);
+    bpf.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+
+    osc.connect(oscGain);
+    oscGain.connect(ctx.destination);
+
+    noise.start(ctx.currentTime);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.15);
+    noise.stop(ctx.currentTime + 0.15);
+  } catch(e) { /* Audio not supported */ }
+}
+
+// "Oh No!" spoken by the browser's speech synthesis
+function playOhNoSound() {
+  try {
+    if (!window.speechSynthesis) return;
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance('Oh No!');
+    utter.pitch = 0.7;   // lower pitch = sad/disappointed
+    utter.rate = 1.1;
+    utter.volume = 1;
+    // Try to pick a voice that sounds good
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v =>
+      v.lang.startsWith('en') && v.name.toLowerCase().includes('female')
+    ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+    if (preferred) utter.voice = preferred;
+    window.speechSynthesis.speak(utter);
+  } catch(e) { /* Speech not supported */ }
+}
+
+// Tiny celebratory chime for correct answers (bonus — not requested but adds polish)
+function playCorrectSound() {
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 major chord
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.08);
+      gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + i * 0.08 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + i * 0.08);
+      osc.stop(ctx.currentTime + i * 0.08 + 0.35);
+    });
+  } catch(e) {}
+}
+
+/* ═══════════════════════════════════════════════════════
    DATA & STATE
 ═══════════════════════════════════════════════════════ */
 const ANIMALS = [
@@ -1779,12 +1886,14 @@ function checkJumble() {
     state.totalCorrect++;
     updateScore(100);
     markJumbleCorrect();
+    playCorrectSound();
     showFeedback('success', '🎉 Correct! +100 pts');
     celebrateAnimal();
     setTimeout(() => advanceWord(1), 1800);
   } else {
     state.jumbleAttempts++;
     markJumbleWrong();
+    playOhNoSound();
     showFeedback('error', '❌ Not quite! Try again.');
 
     if (state.jumbleAttempts >= 2) {
@@ -1795,6 +1904,7 @@ function checkJumble() {
       // Reveal correct answer
       setTimeout(() => {
         revealJumbleAnswer();
+        playOhNoSound();
         showFeedback('error', `The answer was: <strong>${state.jumbleAnswer.join('').toLowerCase()}</strong>`);
         setTimeout(() => advanceWord(1), 2200);
       }, 600);
@@ -2004,6 +2114,7 @@ function checkFill() {
   if (correct) {
     state.totalCorrect++;
     updateScore(100);
+    playCorrectSound();
     markFillCorrect();
     showFeedback('success', '🎉 Correct! +100 pts');
     celebrateAnimal();
@@ -2011,6 +2122,7 @@ function checkFill() {
   } else {
     state.fillAttempts++;
     markFillWrong();
+    playOhNoSound();
     showFeedback('error', '❌ Not quite! Try again.');
 
     if (state.fillAttempts >= 2) {
@@ -2021,6 +2133,7 @@ function checkFill() {
       setTimeout(() => {
         revealFillAnswer();
         const correctWord = state.fillLetters.join('');
+        playOhNoSound();
         showFeedback('error', `The answer was: <strong>${correctWord}</strong>`);
         setTimeout(() => advanceWord(2), 2200);
       }, 600);
@@ -2159,6 +2272,7 @@ function matchCardClick(el, id, side) {
 
       state.totalCorrect++;
       updateScore(100);
+      playCorrectSound();
       updateMatchProgress();
       showFeedback('success', '🎉 Correct! +100 pts');
       celebrateAnimal();
@@ -2171,6 +2285,7 @@ function matchCardClick(el, id, side) {
       // WRONG!
       el.classList.add('wrong-match');
       setTimeout(() => el.classList.remove('wrong-match'), 700);
+      playOhNoSound();
       showFeedback('error', '❌ Not quite! Try again.');
       state.matchSelected = null;
       // Deselect the first
@@ -2316,10 +2431,12 @@ function checkMemoryAnswer(timedOut = false) {
     state.memoryAttempts++;
     if (state.memoryAttempts >= 3) {
       // Reveal and advance
+      playOhNoSound();
       showFeedback('error', `The answer was: <strong>${escHtml(state.memoryWord.en)}</strong>`);
       setTimeout(() => advanceWord(4), 2200);
     } else {
       if (timedOut) {
+        playOhNoSound();
         showFeedback('error', `⏰ Time's up! The answer was: <strong>${escHtml(state.memoryWord.en)}</strong>`);
         setTimeout(() => advanceWord(4), 2200);
       } else {
@@ -3164,6 +3281,24 @@ function promptNameAndSaveScore(score) {
   });
   document.getElementById('inputChinese').addEventListener('keydown', e => {
     if (e.key === 'Enter') addWord();
+  });
+
+  // ── Global sound: squish on every game button click ──
+  document.addEventListener('click', function(e) {
+    const el = e.target;
+    // Only play for game-area buttons (skip teacher setup for a clean experience)
+    const isGameButton =
+      el.closest('.game-area') ||
+      el.closest('.game-tabs') ||
+      el.closest('.game-card') ||
+      el.closest('.trophy-btn') ||
+      el.closest('.jumble-tile') ||
+      el.closest('.qwerty-key') ||
+      el.closest('.match-card') ||
+      el.closest('.game-actions') ||
+      el.closest('.level-btn') ||
+      el.closest('.blank-letter');
+    if (isGameButton) playSquishSound();
   });
 })();
 </script>
